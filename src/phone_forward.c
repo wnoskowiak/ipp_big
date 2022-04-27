@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+// unnececary import
+#include <stdio.h>
 
 struct PhoneForward;
 
@@ -29,7 +31,16 @@ typedef struct phfwdGet_helper
 
 PhoneForward *phfwdNew(void)
 {
-    return (PhoneForward *)malloc(sizeof(PhoneForward));
+    PhoneForward *res = (PhoneForward *)malloc(sizeof(PhoneForward));
+    if (!res)
+    {
+        for (size_t i = 0; i < 10; i++)
+        {
+            res->further[i] = NULL;
+        }
+        res->redirect = NULL;
+    }
+    return res;
 }
 
 void phfwdDelete(PhoneForward *pf)
@@ -53,7 +64,7 @@ void phfwdDelete(PhoneForward *pf)
 
 bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2)
 {
-    bool works= false, different= false, num1_end= false, num2_end = false;
+    bool works = false, different = false, num1_end = false, num2_end = false;
     size_t length = 0, len1 = 0, len2 = 0;
     while (length < ULONG_MAX)
     {
@@ -62,21 +73,35 @@ bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2)
             works = true;
             break;
         }
-        if (num1[length] == '\0')
+        if (!num1_end)
         {
-            len1 = length;
-            num1_end = true;
+            if (num1[length] == '\0')
+            {
+                len1 = length;
+                num1_end = true;
+            }
+            else
+            {
+                if (num1[length] - '0' < 0 || num1[length] - '0' > 9)
+                {
+                    break;
+                }
+            }
         }
-        if (num2[length] == '\0')
+        if (!num2_end)
         {
-            len2 = length;
-            num2_end = true;
-        }
-        if (
-            ((!num1_end) & (num1[length] - '0' < 0 || num1[length] - '0' > 9)) ||
-            ((!num2_end) & (num2[length] - '0' < 0 || num2[length] - '0' > 9)))
-        {
-            break;
+            if (num2[length] == '\0')
+            {
+                len2 = length;
+                num2_end = true;
+            }
+            else
+            {
+                if (num2[length] - '0' < 0 || num2[length] - '0' > 9)
+                {
+                    break;
+                }
+            }
         }
         if (!different)
         {
@@ -94,7 +119,7 @@ bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2)
         PhoneForward *proper_place = pf;
         for (size_t i = 0; i < len1; i++)
         {
-            PhoneForward *temp = proper_place->further[(size_t)(num1[i] - '0')];
+            PhoneForward *temp = proper_place->further[(num1[i] - '0')];
             if (temp)
             {
                 proper_place = temp;
@@ -108,7 +133,7 @@ bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2)
                     {
                         first_created = temp;
                     }
-                    proper_place->further[(size_t)(num1[i] - '0')] = temp;
+                    proper_place->further[(num1[i] - '0')] = temp;
                     proper_place = temp;
                 }
                 else
@@ -121,9 +146,14 @@ bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2)
         if (!mem_fail)
         {
             proper_place->redirect = (char *)malloc((len2 + 1) * sizeof(char));
-            strcpy(proper_place->redirect, num2);
-            proper_place->redirect[len2] = '\0';
-            return true;
+            if (proper_place->redirect)
+            {
+                strcpy(proper_place->redirect, num2);
+                proper_place->redirect[len2] = '\0';
+                return true;
+            }
+            phfwdDelete(first_created);
+            return false;
         }
         else
         {
@@ -154,7 +184,7 @@ void phfwdRemove(PhoneForward *pf, char const *num)
             works = false;
             break;
         }
-        PhoneForward *temp = proper_place->further[(size_t)(num[i] - '0')];
+        PhoneForward *temp = proper_place->further[(num[i] - '0')];
         if (temp)
         {
             if (!deepest_empty)
@@ -196,9 +226,10 @@ PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num)
     PhoneNumbers *result = (PhoneNumbers *)malloc(sizeof(PhoneNumbers));
     if (result)
     {
-        bool reached_end= false , found_deepest = false;
+        bool reached_end = false, found_deepest = false;
         phfwdGet_helper_t deepest_redirect;
         deepest_redirect.depth = 0;
+        deepest_redirect.prefix = NULL;
         PhoneForward const *proper_place = pf;
         size_t i = 0;
         while (i < ULONG_MAX)
@@ -206,6 +237,14 @@ PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num)
             if (num[i] == '\0')
             {
                 reached_end = true;
+                if (!found_deepest)
+                {
+                    if (proper_place->redirect)
+                    {
+                        deepest_redirect.depth = i;
+                        deepest_redirect.prefix = proper_place->redirect;
+                    }
+                }
                 break;
             }
             if ((num[i] - '0' < 0 || num[i] - '0' > 9))
@@ -219,7 +258,7 @@ PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num)
                     deepest_redirect.depth = i;
                     deepest_redirect.prefix = proper_place->redirect;
                 }
-                PhoneForward *temp = proper_place->further[(size_t)(num[i] - '0')];
+                PhoneForward *temp = proper_place->further[(num[i] - '0')];
                 if (temp)
                 {
                     proper_place = temp;
@@ -227,22 +266,21 @@ PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num)
                 else
                 {
                     found_deepest = true;
-                    break;
                 }
             }
             i++;
         }
         if (reached_end)
         {
-            char *new_number;
+            char *new_number = NULL;
             if (deepest_redirect.prefix)
             {
-                size_t new_length = strlen(deepest_redirect.prefix) + i - deepest_redirect.depth;
-                new_number = (char *)malloc(new_length * sizeof(char));
+                size_t new_length = strlen(deepest_redirect.prefix) + i + 1 - deepest_redirect.depth;
+                new_number = (char *)malloc((new_length) * sizeof(char));
                 if (new_number)
                 {
                     strcpy(new_number, deepest_redirect.prefix);
-                    strcpy(new_number, &num[i + 1]);
+                    strcat(new_number, &num[deepest_redirect.depth]);
                     new_number[new_length - 1] = '\0';
                 }
                 else
@@ -256,7 +294,7 @@ PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num)
                 if (new_number)
                 {
                     strcpy(new_number, num);
-                    new_number[i - 1] = '\0';
+                    new_number[i] = '\0';
                 }
                 else
                 {
@@ -287,7 +325,7 @@ PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num)
 
 char const *phnumGet(PhoneNumbers const *pnum, size_t idx)
 {
-    if (pnum->len >= idx)
+    if (pnum->len <= idx)
     {
         return NULL;
     }

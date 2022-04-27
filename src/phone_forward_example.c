@@ -5,6 +5,7 @@
 #include "phone_forward.h"
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 
 #define MAX_LEN 23
 
@@ -21,10 +22,12 @@ int main() {
   memset(num1, 0, sizeof num1);
   memset(num2, 0, sizeof num2);
 
+  
   pnum = phfwdGet(pf, "1234");
   assert(strcmp(phnumGet(pnum, 0), "94") == 0);
   assert(phnumGet(pnum, 1) == NULL);
   phnumDelete(pnum);
+  
 
   pnum = phfwdGet(pf, "12");
   assert(strcmp(phnumGet(pnum, 0), "12") == 0);
@@ -54,6 +57,7 @@ int main() {
   pnum = phfwdGet(pf, "432");
   assert(strcmp(phnumGet(pnum, 0), "433") == 0);
   phnumDelete(pnum);
+  phfwdDelete(pf);
 
 //   pnum = phfwdReverse(pf, "432");
 //   assert(strcmp(phnumGet(pnum, 0), "431") == 0);
