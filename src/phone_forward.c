@@ -31,6 +31,8 @@ typedef struct phfwdGet_helper
     char *prefix;
 } phfwdGet_helper_t;
 
+PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) { printf("sranie"); }
+
 PhoneForward *phfwdNew(void)
 {
     PhoneForward *res = (PhoneForward *)malloc(sizeof(PhoneForward));
@@ -52,26 +54,30 @@ PhoneForward *phfwdNew(void)
 
 void phfwdDelete(PhoneForward *pf)
 {
-    queue_t *queue = queue_initialize(10);
-    PhoneForward *temp = NULL;
-    add(queue, pf);
-    while (is_empty(queue))
+    if (pf)
     {
-        temp = pop(queue);
-        if (temp->redirect)
+        queue_t *queue = queue_initialize(10);
+        PhoneForward *temp = NULL;
+        add(queue, pf);
+        while (!is_empty(queue))
         {
-            free(temp->redirect);
-        }
-        for (size_t i = 0; i < 10; i++)
-        {
-            if (temp->further[i])
+            temp = pop(queue);
+            printf("%p\n",temp);
+            for (size_t i = 0; i < 10; i++)
             {
-                add(queue,temp->further[i]);
+                if (temp->further[i])
+                {
+                    add(queue, temp->further[i]);
+                }
             }
+            if (temp->redirect)
+            {
+                free(temp->redirect);
+            }
+            free(temp);
         }
-        free(temp);
+        queue_destroy(queue);
     }
-    queue_destroy(queue);
 }
 
 bool alphabethOk(char num, bool *endOfWord)
