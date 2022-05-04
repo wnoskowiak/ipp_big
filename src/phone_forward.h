@@ -12,6 +12,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+void printcre();
+
 /**
  * To jest struktura przechowująca przekierowania numerów telefonów.
  */

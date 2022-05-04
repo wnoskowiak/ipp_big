@@ -24,8 +24,8 @@ set(SOURCE_FILES
     src/phone_forward.h
     src/phone_forward.c
     src/phone_forward_example.c
-    src/queue.c
-    src/queue.h)
+    src/stack.c
+    src/stack.h)
 
 # Wskazujemy plik wykonywalny.
 add_executable(phone_forward ${SOURCE_FILES})
