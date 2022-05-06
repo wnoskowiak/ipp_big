@@ -37,7 +37,6 @@ typedef struct phfwdGet_helper {
       char *prefix;
 } phfwdGet_helper_t;
 
-// to jest tutaj tylko po to żeby kompilator zamknoł pizde
 PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
       pf = pf;
       num = num;
@@ -57,13 +56,14 @@ PhoneForward *phfwdNew(void) {
       return res;
 }
 
-bool isLeaf(PhoneForward *pf, size_t *leftmostIndex) {
+bool isLeaf(PhoneForward *pf, size_t *leftmostIndex, size_t ignore) {
       bool result = true;
       for (size_t i = 0; i < 10; i++) {
-            
-            if (pf->further[i]) {
+            if ((i != ignore) && (pf->further[i])) {
                   result = false;
-                  *leftmostIndex = i;
+                  if (leftmostIndex) {
+                        *leftmostIndex = i;
+                  }
                   break;
             }
       }
@@ -74,7 +74,7 @@ PhoneForward *getLeftmostLeaf(PhoneForward *pf, PhoneForward **parent,
                               size_t *leftmostIndex) {
       PhoneForward *temp = pf;
       while (true) {
-            if (isLeaf(temp, leftmostIndex)) {
+            if (isLeaf(temp, leftmostIndex, 10)) {
                   break;
             }
             *parent = temp;
@@ -177,33 +177,42 @@ static inline bool numbersOk(size_t *len1, size_t *len2, char const *num1,
       return different & works;
 }
 
+PhoneForward *createBranch(PhoneForward *pf, char const *num, size_t len,
+                           PhoneForward **first_created, bool *memfail) {
+      *memfail = false;
+      *first_created = NULL;
+      PhoneForward *proper_place = pf;
+      PhoneForward *temp = NULL;
+      for (size_t i = 0; i < len; i++) {
+            if ((temp = proper_place->further[(num[i] - '0')])) {
+                  proper_place = temp;
+            } else {
+                  if (!(temp = phfwdNew())) {
+                        *memfail = true;
+                        break;
+                  }
+                  if (!first_created) {
+                        *first_created = temp;
+                  }
+                  proper_place->further[(num[i] - '0')] = temp;
+                  temp->parent = proper_place;
+                  proper_place = temp;
+            }
+      }
+      return proper_place;
+}
+
 bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2) {
-      if (!(num1 && num2)) {
+      if (!(num1 && num2 && pf)) {
             return false;
       }
       size_t len1 = 0, len2 = 0;
       if (numbersOk(&len1, &len2, num1, num2) && len1 > 0 && len2 > 0) {
-            bool mem_fail = false;
-            PhoneForward *first_created = NULL;
-            PhoneForward *proper_place = pf;
-            PhoneForward *temp = NULL;
-            for (size_t i = 0; i < len1; i++) {
-                  if ((temp = proper_place->further[(num1[i] - '0')])) {
-                        proper_place = temp;
-                  } else {
-                        if (!(temp = phfwdNew())) {
-                              mem_fail = true;
-                              break;
-                        }
-                        if (!first_created) {
-                              first_created = temp;
-                        }
-                        proper_place->further[(num1[i] - '0')] = temp;
-                        temp->parent = proper_place;
-                        proper_place = temp;
-                  }
-            }
-            if (!mem_fail) {
+            bool memfail;
+            PhoneForward *first_created;
+            PhoneForward *proper_place =
+                createBranch(pf, num1, len1, &first_created, &memfail);
+            if (!memfail) {
                   if (proper_place->redirect) {
                         free(proper_place->redirect);
                   }
@@ -240,15 +249,14 @@ void phfwdRemove(PhoneForward *pf, char const *num) {
                   works = false;
                   break;
             }
-            empty = true;
-            for (size_t j = 0; j < 10; j++) {
-                  if (j != number) {
-                        if (proper_place->further[j]) {
-                              empty = false;
-                              break;
-                        }
-                  }
-            }
+            empty = isLeaf(proper_place, NULL, number);
+            // ebe ebe
+            // for (size_t j = 0; j < 10; j++) {
+            //       if ((j != number) && (proper_place->further[j])) {
+            //             empty = false;
+            //             break;
+            //       }
+            // }
             if (!empty || proper_place->redirect || !deepest_empty) {
                   deepest_empty = proper_place;
                   deepest_index = number;
@@ -357,7 +365,7 @@ PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num) {
 }
 
 char const *phnumGet(PhoneNumbers const *pnum, size_t idx) {
-      if (pnum->len <= idx) {
+      if ((!pnum) || (pnum->len <= idx)) {
             return NULL;
       }
       return pnum->list[idx];
