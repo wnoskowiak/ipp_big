@@ -70,7 +70,6 @@ stack_t *stack_resize(stack_t *stack)
     PhoneForward **narr = (PhoneForward **)realloc(stack->array, (stack->cap + 2) * sizeof(PhoneForward *));
     if (narr == NULL)
     {
-        stack_destroy(stack);
         return NULL;
     }
     stack->cap += 2;
@@ -84,8 +83,7 @@ stack_t *add(stack_t *stack, PhoneForward *item)
     // jeśli kolejka jest pełna to próbujemy ją zwiększyć
     if (is_full(stack))
     {
-        stack = stack_resize(stack);
-        if (!stack)
+        if (!stack_resize(stack))
         {
             return NULL;
         }
