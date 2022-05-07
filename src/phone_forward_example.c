@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MAX_LEN 23
+#define MAX_LEN 25
 
 int main(int argc, char **argv) {
 	bool testReverse = false;
