@@ -83,7 +83,8 @@ stack_t *add(stack_t *stack, PhoneForward *item)
     // jeśli kolejka jest pełna to próbujemy ją zwiększyć
     if (is_full(stack))
     {
-        if (!stack_resize(stack))
+        stack = stack_resize(stack);
+        if (!stack)
         {
             return NULL;
         }

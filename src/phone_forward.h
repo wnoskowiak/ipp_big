@@ -29,7 +29,7 @@ typedef struct PhoneNumbers PhoneNumbers;
  * @return Wskaźnik na utworzoną strukturę lub NULL, gdy nie udało się
  *         alokować pamięci.
  */
-PhoneForward * phfwdNew(void);
+PhoneForward * phfwdNew();
 
 /** @brief Usuwa strukturę.
  * Usuwa strukturę wskazywaną przez @p pf. Nic nie robi, jeśli wskaźnik ten ma

@@ -24,6 +24,10 @@ set(SOURCE_FILES
     src/phone_forward.h
     src/phone_forward.c
     src/phone_forward_example.c
+    src/trie_functions.c
+    src/trie_functions.h
+    src/alphabet_check.c
+    src/alphabet_check.h
     src/stack.c
     src/stack.h)
 
