@@ -119,7 +119,7 @@ PhoneForward *createBranch(PhoneForward *pf, char const *number, size_t length,
 PhoneForward *getDeepestEmpty(PhoneForward *pf, char const *num, bool *alright,
                               size_t *deepestIndex) {
       *alright = true;
-      bool tmp = false, empty = true;
+      bool tmp, empty = true;
       PhoneForward *properPlace = pf;
       PhoneForward *deepestEmpty = NULL;
       PhoneForward *temp = NULL;
@@ -148,7 +148,6 @@ phfwdGet_helper_t getDeepestRedirect(size_t *final,
                                                    bool *reachedEnd,
                                                    PhoneForward const *pf,
                                                    char const *num) {
-      *reachedEnd = false;
       bool foundDeepest = false;
       PhoneForward const *properPlace = pf, *temp = NULL;
       phfwdGet_helper_t deepestRedirect;

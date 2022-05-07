@@ -1,12 +1,3 @@
-/** @file
- * Implementacja klasy przechowującej przekierowania numerów telefonicznych
- * wykorzystujący drzewo trie
- *
- * @author Wojciech Noskowiak <wn417909@students.mimuw.edu.pl>
- * @copyright Uniwersytet Warszawski
- * @date 2022
- */
-
 #include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>

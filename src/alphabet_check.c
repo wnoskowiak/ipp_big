@@ -7,10 +7,11 @@
 
 #include "alphabet_check.h"
 
-bool alphabethOk(char number, bool *endOfWord) {
-      if (number == '\0') {
+bool alphabethOk(char character, bool *endOfWord) {
+      *endOfWord = false;
+      if (character == '\0') {
             *endOfWord = true;
-      } else if (number - '0' < 0 || number - '0' > 9) {
+      } else if (character - '0' < 0 || character - '0' > 9) {
             return false;
       }
       return true;
