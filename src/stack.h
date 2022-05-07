@@ -1,33 +1,64 @@
+/** @file
+ * Funkcje do obsługi stosu
+ * @author Wojciech Noskowiak <wn417909@students.mimuw.edu.pl>
+ * @copyright Uniwersytet Warszawski
+ * @date 2022
+ */
+
 #ifndef STACK_H_
 #define STACK_H_
-#include <stdlib.h>
-#include <stdbool.h>
 
-struct PhoneForward;
+#include "types.h"
 
-typedef struct PhoneForward PhoneForward;
-
-typedef struct stack stack_t;
-
-// sprawdzanie czy kolejka jest pusta
+/**
+ * @brief Funkcja sprawdzająca czy stos jest pusty
+ * Funkcja werifikuje czy stos na który wskazuje wskaźnik @p stack jest pusty
+ * 
+ * @param stack - wskaźnik na badany stos 
+ * @return true kiedy stos jest pusty, true kiedy stos nie jest pusty
+ */
 bool is_empty(stack_t *stack);
 
-// sprawdzanie czy kolejka pełna
+/**
+ * @brief Funkcja sprawdzająca czy stos jest pełny
+ * Funkcja werifikuje czy stos na który wskazuje wskaźnik @p stack jest pełny
+ * 
+ * @param stack - wskaźnik na badany stos 
+ * @return true kiedy stos jest pełny, true kiedy stos nie jest pełny
+ */
 bool is_full(stack_t *stack);
 
-// inicjalizacja kolejki
+/**
+ * @brief funkcja tworząca pusty stos
+ * Funkcja tworzy stos o rozmiarze @p cap
+ * @param cap - określa rozmiar tworzonego stosu
+ * @return wskaźnik na nowo utworzony stos 
+ */
 stack_t *stack_initialize(size_t cap);
 
-// zwalnianie pamięci kolejki
+/**
+ * @brief Funkcja usuwająca stos 
+ * Funkcja usuwająca stos na który wskazuje @p stack
+ * @param stack - wskaźnik na stos do usunięcia
+ */
 void stack_destroy(stack_t *stack);
 
-// zwiększanie rozmiaru kolejki
-stack_t *stack_resize(stack_t *stack);
-
-// dodawanie elementu do kolejki
+/**
+ * @brief Funkcja dodająca element do stosu
+ * Funkcja dodająca element @p item do stosu na który wskazuje @p stack
+ * @param stack - stos do którego dodany zostanie element
+ * @param item - wskaźnik na element do dodania
+ * @return wskaźnik na @p stack jeśli udało się zaalokować pamięć, w przeciwnym wypadku 
+ * NULL
+ */
 stack_t *add(stack_t *stack, PhoneForward *item);
 
-// usuwanie elementu z kolejki
+/**
+ * @brief Funkcja wyciągająca element ze stosu
+ * Funkcja wyciągająca ostatnio dodany element ze stosu na który wskazuje @p stack
+ * @param stack - wskaźnik na stos z którego zostanie wyciągnięty element
+ * @return wyciągnięty element ze sotsu
+ */
 PhoneForward *pop(stack_t *stack);
 
 #endif

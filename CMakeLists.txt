@@ -29,7 +29,8 @@ set(SOURCE_FILES
     src/alphabet_check.c
     src/alphabet_check.h
     src/stack.c
-    src/stack.h)
+    src/stack.h
+    src/types.h)
 
 # Wskazujemy plik wykonywalny.
 add_executable(phone_forward ${SOURCE_FILES})
