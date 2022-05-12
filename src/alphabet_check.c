@@ -7,22 +7,44 @@
  * @date 2022
  */
 
+/*obczaić funkcję memmove*/
+
 #include "alphabet_check.h"
 
 #include <limits.h>
 #include <stdbool.h>
 
-bool alphabethOk(char character, bool *endOfWord) {
+bool alphabethOk(char character, bool *endOfWord, size_t *index) {
       // inicjalizujemy endOfWord jako false
-      *endOfWord = false;
+      if(endOfWord) {
+            *endOfWord = false;
+            }
       if (character == '\0') {
             // jeśli character = null character to endOfWord ustawiamy na true
-            *endOfWord = true;
-      } else if (character - '0' < 0 || character - '0' > 9) {
-            // jeśli character nie zawiera się pomiędy 0 a 9 zwracyamy false
-            return false;
+            if (endOfWord) {
+                  *endOfWord = true;
+            }
+            return true;
       }
-      return true;
+      if (character - '0' >= 0 && character - '0' <= 9) {
+            if (index) {
+                  *index = (size_t)(character - '0');
+            }
+            return true;
+      }
+      if (character - '#' == 0) {
+            if (index) {
+                  *index = 10;
+            }
+            return true;
+      }
+      if (character - '*' == 0) {
+            if (index) {
+                  *index = 11;
+            }
+            return true;
+      }
+      return false;
 }
 
 bool numbersOk(size_t *length1, size_t *length2, char const *number1,
@@ -36,7 +58,7 @@ bool numbersOk(size_t *length1, size_t *length2, char const *number1,
             // sprawdzamy czy dotarliśmy juz do końca napisu
             if (!num1End) {
                   // sprawdzamy czy znak numeru jest poprawny
-                  if (!alphabethOk(number1[length], &num1End)) {
+                  if (!alphabethOk(number1[length], &num1End, NULL)) {
                         break;
                   }
                   if (num1End) {
@@ -48,7 +70,7 @@ bool numbersOk(size_t *length1, size_t *length2, char const *number1,
             // sprawdzamy czy dotarliśmy juz do końca napisu
             if (!num2End) {
                   // sprawdzamy czy znak numeru jest poprawny
-                  if (!alphabethOk(number2[length], &num2End)) {
+                  if (!alphabethOk(number2[length], &num2End, NULL)) {
                         break;
                   }
                   if (num2End) {

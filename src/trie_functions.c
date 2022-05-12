@@ -21,7 +21,7 @@ PhoneForward *createNode(void) {
             return NULL;
       }
       // jeśli się uda inicjalizujemy go z wartościami NULL
-      for (size_t i = 0; i < 10; i++) {
+      for (size_t i = 0; i < 12; i++) {
             result->further[i] = NULL;
       }
       result->redirect = NULL;
@@ -32,9 +32,9 @@ PhoneForward *createNode(void) {
 bool isLeaf(PhoneForward *pf, size_t *leftmostIndex, size_t ignore) {
       // inicjalizujemy zwracany bool jako false
       bool result = true;
-      for (size_t i = 0; i < 10; i++) {
+      for (size_t i = 0; i < 12; i++) {
             if ((i != ignore) && (pf->further[i])) {
-                  // jeśli któruykolwiek indeks nie jest pusty ustwaiwamy result
+                  // jeśli którykolwiek indeks nie jest pusty ustwaiwamy result
                   // na true i leftmostIndex na odpowiedni indeks
                   result = false;
                   if (leftmostIndex) {
@@ -52,7 +52,7 @@ PhoneForward *getLeftmostLeaf(PhoneForward *pf, PhoneForward **parent,
       PhoneForward *current = pf;
       while (true) {
             // jeśli podany węzeł jest liściem przerywamy pętle
-            if (isLeaf(current, leftmostIndex, 10)) {
+            if (isLeaf(current, leftmostIndex, 12)) {
                   break;
             }
             // jeśli przechodzimy do jego najbardziej lewego syna i szukamy
@@ -93,10 +93,12 @@ PhoneForward *createBranch(PhoneForward *pf, char const *number, size_t length,
       *firstCreated = NULL;
       PhoneForward *properPlace = pf;
       PhoneForward *current = NULL;
+      size_t index;
       // przechodzimy przez całe słowo
       for (size_t i = 0; i < length; i++) {
+            alphabethOk(number[i], NULL,&index);
             // sprawdzamy czy zadany węzeł już istnieje
-            if ((current = properPlace->further[(number[i] - '0')])) {
+            if ((current = properPlace->further[index])) {
                   // jeśli tak przechodzimy do niego
                   properPlace = current;
             } else {
@@ -110,7 +112,7 @@ PhoneForward *createBranch(PhoneForward *pf, char const *number, size_t length,
                         // zapisujemy jeśli to pierwszy stworzony węzeł w pętli
                         *firstCreated = current;
                   }
-                  properPlace->further[(number[i] - '0')] = current;
+                  properPlace->further[index] = current;
                   current->parent = properPlace;
                   properPlace = current;
             }
@@ -128,12 +130,10 @@ PhoneForward *getDeepestEmpty(PhoneForward *pf, char const *num, bool *alright,
       size_t number;
       for (size_t i = 0; i < ULONG_MAX; i++) {
             // sprawdzamy czy znak jest poprawny
-            *alright = alphabethOk(num[i], &tmp);
+            *alright = alphabethOk(num[i], &tmp,&number);
             if (!(*alright) || tmp) {
                   break;
             }
-
-            number = (num[i] - '0');
             temp = properPlace->further[number];
             // jeśli nie ma dalszego syna w odpowiednim miejscu to przerywamy
             // działanie pętli
@@ -162,9 +162,10 @@ phfwdGet_helper_t getDeepestRedirect(size_t *final, bool *reachedEnd,
       phfwdGet_helper_t deepestRedirect;
       deepestRedirect.depth = 0;
       deepestRedirect.prefix = NULL;
+      size_t index;
       for (size_t i = 0; i < ULONG_MAX; i++) {
             // weryfikujemy poprawność znaków
-            if (!alphabethOk(num[i], reachedEnd)) {
+            if (!alphabethOk(num[i], reachedEnd, &index)) {
                   break;
             }
             if (!foundDeepest) {
@@ -175,7 +176,7 @@ phfwdGet_helper_t getDeepestRedirect(size_t *final, bool *reachedEnd,
                         deepestRedirect.prefix = properPlace->redirect;
                   }
                   if (!(*reachedEnd)) {
-                        if ((temp = properPlace->further[(num[i] - '0')])) {
+                        if ((temp = properPlace->further[index])) {
                               properPlace = temp;
                         } else {
                               foundDeepest = true;

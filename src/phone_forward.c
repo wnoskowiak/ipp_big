@@ -36,7 +36,7 @@ void phfwdDelete(PhoneForward *pf) {
             return;
       }
       // próbujemy zainicjalizować kolejkę
-      stack_t *stack = stack_initialize(10);
+      stack_t *stack = stack_initialize(12);
       // jeśli się nie uda wywoływana jest bezpieczna funkcja usuwania
       if (!stack) {
             safeDelete(pf);
@@ -49,7 +49,7 @@ void phfwdDelete(PhoneForward *pf) {
             //ściągamy pierwszy element ze stosu
             temp = pop(stack);
             // dodajemy na stos wszystkie elementy na które on wskazuje
-            for (size_t i = 0; i < 10; i++) {
+            for (size_t i = 0; i < 12; i++) {
                   if (temp->further[i]) {
                         if (!add(stack, temp->further[i])) {
                               // jeśli nie uda się dodać elementu do kolejki

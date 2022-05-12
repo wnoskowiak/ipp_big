@@ -33,7 +33,7 @@ typedef struct PhoneForward PhoneForward;
 struct PhoneForward {
       PhoneForward *parent; /**< wskaźniki na element zawierający wskaźnik do tej konkretnej struktury 
       nie wykorzystywany w tej wersji programu (będzie wykorzystywane przez phfwdRemove)*/
-      PhoneForward *further[10]; /**< wskaźniki na dalsze elementy drzewa */ 
+      PhoneForward *further[12]; /**< wskaźniki na dalsze elementy drzewa */ 
       char *redirect; /**< wskaźniki na napis zawierający przekierowanie */ 
 };
 

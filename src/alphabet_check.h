@@ -13,16 +13,19 @@
 #include <stdlib.h>
 
 /** @brief Weryfikuje czy podany znak reprezentuje cyfrę.
- * Funkcja określa czy @p character jest cyfrą pomiędzy 0 a 9, skutecznie
+ * Funkcja określa czy @p character jest cyfrą pomiędzy 0 a 9 lub znakiem '#' lub '*', skutecznie
  * weryfikując czy może być ona częścią reprezentacji numeru. Jeśli podany znak
  * jest znakiem null to @p endOfWord zostanie ustawiona na true
  * @param[in] character   – wskaźnik na znak do weryfikacji.
  * @param[out] endOfWord   – wskaźnik na zmienną określającą czy podany znak
  * jest znakiem null.
+ * @param[out] index   – wskaźnik na zmienną w którym zostanie zapisany index
+ * na który wskazuje znak w tablicy dzieci węzła. Jeśli znak nie jest odpowiedni w tym miejscu
+ * nic nie jest zapisywane.
  * @return Wartość @p true, podany znak reprezentuje cyfrę.
  *         Wartość @p false, podany znak nie reprezentuje cyfry
  */
-bool alphabethOk(char character, bool *endOfWord);
+bool alphabethOk(char character, bool *endOfWord, size_t* index);
 
 /** @brief Weryfikuje czy podane napist reprezentują parę różnych numerów telefonu
  *  i określa ich długość
