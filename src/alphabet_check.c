@@ -14,11 +14,27 @@
 #include <limits.h>
 #include <stdbool.h>
 
+#include <stdio.h>
+
+int charToNum(char chr) {
+      int result = -1;
+      if (chr - '0' >= 0 && chr - '0' <= 9) {
+            result = (int)(chr - '0');
+      }
+      if (chr - '#' == 0) {
+            result = 10;
+      }
+      if (chr - '*' == 0) {
+            result = 11;
+      }
+      return result;
+}
+
 bool alphabethOk(char character, bool *endOfWord, size_t *index) {
       // inicjalizujemy endOfWord jako false
-      if(endOfWord) {
+      if (endOfWord) {
             *endOfWord = false;
-            }
+      }
       if (character == '\0') {
             // jeśli character = null character to endOfWord ustawiamy na true
             if (endOfWord) {
@@ -26,25 +42,31 @@ bool alphabethOk(char character, bool *endOfWord, size_t *index) {
             }
             return true;
       }
-      if (character - '0' >= 0 && character - '0' <= 9) {
-            if (index) {
-                  *index = (size_t)(character - '0');
-            }
-            return true;
+      int temp = charToNum(character);
+      if(index){
+            *index = (size_t)temp;
       }
-      if (character - '#' == 0) {
-            if (index) {
-                  *index = 10;
-            }
-            return true;
-      }
-      if (character - '*' == 0) {
-            if (index) {
-                  *index = 11;
-            }
+      if (temp>0){
             return true;
       }
       return false;
+}
+
+char numToChar(int number) {
+      if (number < 0) {
+            return '\n';
+      }
+      char result = '\n';
+      if (number < 10) {
+            result = (char)(number - '0');
+      }
+      if (number == 10) {
+            result = '#';
+      }
+      if (number == 11) {
+            result = '*';
+      }
+      return result;
 }
 
 bool numbersOk(size_t *length1, size_t *length2, char const *number1,

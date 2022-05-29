@@ -127,4 +127,6 @@ phfwdGet_helper_t getDeepestRedirect(size_t *final, bool *reachedEnd,
                                      PhoneForward const *pf,
                                      char const *number);
 
+char *treverseUp(PhoneForward* pf, size_t *length);
+
 #endif

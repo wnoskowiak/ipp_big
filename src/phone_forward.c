@@ -9,18 +9,77 @@
 
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "alphabet_check.h"
 #include "stack.h"
 #include "trie_functions.h"
 #include "types.h"
+#include "phone_forward_list.h"
+#include "phone_numbers_manager.h"
+#include "resizable_char_list.h"
+#include <stdio.h>
+/** @brief Pomocnicza funkcja łącząca dwa numery telefonu w jeden.
+ * Pomocnicza fubkcja konkatynująca @p num1 i @p num2 w sposób bezpieczny. jeśli
+ * nie uda się zaalokować pamięci funkcja zwraca NULL. Funkcja nie weryfikuje
+ * poprawnośći numerów. @p num1length i
+ * @p num2length określają długość konkatynowamych napisów
+ * @param[in] num1 – wskaźnik na napis reprezentujący pierwszy numer.
+ * @param[in] num2 – wskaźnik na napis reprezentujący drugi numer.
+ * @param[in] num1length – długość pierwszego numeru.
+ * @param[in] num2length – długość drugiego numeru.
+ * @return wskaźnik na zkonkatynowany napis
+ */
+static inline char *joinNumbers(const char *num1, const char *num2,
+                                size_t num1length, size_t num2length) {
+      size_t newLength = num1length + num2length + 1;
+      // próbujemy zaalokować odpowiednią ilość pamięci
+      char *newNumber = (char *)malloc((newLength) * sizeof(char));
+      if (!newNumber) {
+            return NULL;
+      }
+      // jeśli się uda to zapisujemy do niej oba napisy
+      strcpy(newNumber, num1);
+      if (num2) {
+            strcat(newNumber, num2);
+      }
+      newNumber[newLength - 1] = '\0';
+      return newNumber;
+}
+
+int pstrcmp( const void* a, const void* b )
+{
+  return strcmp( *(const char**)a, *(const char**)b );
+}
+
 
 PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
-      // ta funkcja nie robi nic, poniższe operacje mają powstrzymywać
-      // kompilator od wyrzucania błędów
-      pf = pf;
-      num = num;
-      return NULL;
+      PhoneNumbers *result;
+      if(!(result = pnum_initalize())){
+            return NULL;
+      }
+      size_t length1 = 0, dump;
+      char dummy = '\n';
+      const char* empty = &dummy;
+      if(!numbersOk(&length1,&dump,num,empty)){
+            return result;
+      }
+      if(!pf || !num){
+            return result;
+      }
+      PhoneForward const *temp = pf;
+      size_t len;
+      for(size_t i = 0; i<length1; i++){
+            if(temp->redirects){
+                  for(size_t j = 0; j<temp->redirects->last_index; j++){
+                        const char *prefix = treverseUp(temp->redirects->list[j], &len);
+                        result = pnum_add(result,joinNumbers(prefix,&num[j],len,(length1-i)));
+                  }
+            }
+            temp = temp->further[charToNum(num[i])];
+      }
+      qsort(result->list,result->len,sizeof(char*),pstrcmp);
+      return result;
 }
 
 PhoneForward *phfwdNew() { return createNode(); }
@@ -71,34 +130,43 @@ bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2) {
       if (!(num1 && num2 && pf)) {
             return false;
       }
-      size_t length1 = 0, lenght2 = 0;
+      size_t length1 = 0, length2 = 0;
       // weryfikujemy czy podane napisy reprezentują numery telefonów
-      if (numbersOk(&length1, &lenght2, num1, num2) && length1 > 0 &&
-          lenght2 > 0) {
-            bool memoryFailure;
-            PhoneForward *firstCreated;
-            // próbujemy stworzyć węzeł w odpowiednim miejscu
-            PhoneForward *properPlace =
-                createBranch(pf, num1, length1, &firstCreated, &memoryFailure);
-            if (!memoryFailure) {
-                  // jeśli udało się je stworzyć dopisujemy do niego
-                  // przekierowanie
-                  if (properPlace->redirect) {
-                        free(properPlace->redirect);
-                  }
-                  properPlace->redirect =
-                      (char *)malloc((lenght2 + 1) * sizeof(char));
-                  if (properPlace->redirect) {
-                        strcpy(properPlace->redirect, num2);
-                        properPlace->redirect[lenght2] = '\0';
-                        return true;
-                  }
-            }
-            // jeśli program dotarł do tej linijki ro znaczy że
+      if (!(numbersOk(&length1, &length2, num1, num2) && length1 > 0 &&
+            length2 > 0)) {
+            return false;
+      }
+      bool memoryFailure;
+      PhoneForward *firstCreated;
+      // próbujemy stworzyć węzeł w odpowiednim miejscu
+      PhoneForward *properPlace =
+          createBranch(pf, num1, length1, &firstCreated, &memoryFailure);
+      if (memoryFailure) {
+            // jeśli program dotarł do tej linijki to znaczy że
             // wysytąpił problem z alokacją pamięci
             phfwdDelete(firstCreated);
+            return false;
       }
-      return false;
+      // jeśli udało się je stworzyć dopisujemy do niego
+      // przekierowanie
+      if (properPlace->redirect) {
+            free(properPlace->redirect);
+      }
+      properPlace->redirect = (char *)malloc((length2 + 1) * sizeof(char));
+      if (properPlace->redirect) {
+            strcpy(properPlace->redirect, num2);
+            properPlace->redirect[length2] = '\0';
+      }
+      PhoneForward *redirectPlace=createBranch(pf, num2, length2, &firstCreated, &memoryFailure);
+      if (memoryFailure) {
+            // jeśli program dotarł do tej linijki to znaczy że
+            // wysytąpił problem z alokacją pamięci
+            phfwdDelete(firstCreated);
+            return false;
+      }
+      redirectPlace->redirects = list_add(redirectPlace->redirects,properPlace);
+      printf("%li\n",redirectPlace->redirects->last_index);
+      return true;
 }
 
 void phfwdRemove(PhoneForward *pf, char const *num) {
@@ -120,35 +188,10 @@ void phfwdRemove(PhoneForward *pf, char const *num) {
       }
 }
 
-/** @brief Pomocnicza funkcja łącząca dwa numery telefonu w jeden.
- * Pomocnicza fubkcja konkatynująca @p num1 i @p num2 w sposób bezpieczny. jeśli
- * nie uda się zaalokować pamięci funkcja zwraca NULL. Funkcja nie weryfikuje
- * poprawnośći numerów. @p num1length i
- * @p num2length określają długość konkatynowamych napisów
- * @param[in] num1 – wskaźnik na napis reprezentujący pierwszy numer.
- * @param[in] num2 – wskaźnik na napis reprezentujący drugi numer.
- * @param[in] num1length – długość pierwszego numeru.
- * @param[in] num2length – długość drugiego numeru.
- * @return wskaźnik na zkonkatynowany napis
- */
-static inline char *joinNumbers(const char *num1, const char *num2,
-                                size_t num1length, size_t num2length) {
-      size_t newLength = num1length + num2length + 1;
-      // próbujemy zaalokować odpowiednią ilość pamięci
-      char *newNumber = (char *)malloc((newLength) * sizeof(char));
-      if (!newNumber) {
-            return NULL;
-      }
-      // jeśli się uda to zapisujemy do niej oba napisy
-      strcpy(newNumber, num1);
-      if (num2) {
-            strcat(newNumber, num2);
-      }
-      newNumber[newLength - 1] = '\0';
-      return newNumber;
-}
+
 
 PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num) {
+      printf("%s\n",num);
       // jeśli pf == NULL zwracamy NULL
       if (!pf) {
             return NULL;

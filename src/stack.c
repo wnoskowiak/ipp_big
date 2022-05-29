@@ -83,7 +83,7 @@ stack_t *add(stack_t *stack, PhoneForward *item) {
 }
 
 PhoneForward *pop(stack_t *stack) {
-      // prawdzamy czy stos nie jest pusty
+      // sprawdzamy czy stos nie jest pusty
       if (is_empty(stack)) {
             return NULL;
       }

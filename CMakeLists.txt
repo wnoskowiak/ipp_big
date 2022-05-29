@@ -30,7 +30,13 @@ set(SOURCE_FILES
     src/alphabet_check.h
     src/stack.c
     src/stack.h
-    src/types.h)
+    src/types.h
+    src/phone_forward_list.c
+    src/phone_forward_list.h
+    src/resizable_char_list.c
+    src/resizable_char_list.h
+    src/phone_numbers_manager.c
+    src/phone_numbers_manager.h)
 
 # Wskazujemy plik wykonywalny.
 add_executable(phone_forward ${SOURCE_FILES})

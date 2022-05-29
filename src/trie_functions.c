@@ -10,9 +10,52 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
+#include "resizable_char_list.h"
 #include "alphabet_check.h"
 #include "types.h"
+
+void free_PhoneForwardList(PhoneForwardList_t * list){
+      if(!list){
+          return;  
+      }
+      if(list->list){
+            free(list->list);
+      }
+      free(list);
+}
+
+int findInFurther(PhoneForward* pf, PhoneForward* seek){
+      if(!pf || !seek){
+            return -1;
+      }
+      int result = -1;
+      for(int i = 0; i<12; i++){
+            if(pf->further[i] == seek){
+                  result = i;
+            }
+      }
+      return result;
+}
+
+char *treverseUp(PhoneForward* pf, size_t *length){
+      if(!pf){
+            NULL;
+      }
+      *length = 0;
+      resizable_string_t *result = string_initalize();
+      PhoneForward *parent = pf->parent;
+      PhoneForward *current = pf;
+      while(parent){
+            result = string_add(result,numToChar(findInFurther(parent,current)));
+            current = parent;
+            parent = parent->parent;
+            *length += 1;
+      }
+      return(string_close(result));
+}
 
 PhoneForward *createNode(void) {
       // próbujemy zaalokować element zwracany przez funkcję
@@ -24,6 +67,7 @@ PhoneForward *createNode(void) {
       for (size_t i = 0; i < 12; i++) {
             result->further[i] = NULL;
       }
+      result->redirects = NULL;
       result->redirect = NULL;
       result->parent = NULL;
       return result;
@@ -67,6 +111,9 @@ void deleteLeaf(PhoneForward *pf) {
       if (pf->redirect) {
             free(pf->redirect);
       }
+      if (pf->redirects){
+            free_PhoneForwardList(pf->redirects);
+      }
       free(pf);
 }
 
@@ -94,6 +141,7 @@ PhoneForward *createBranch(PhoneForward *pf, char const *number, size_t length,
       PhoneForward *properPlace = pf;
       PhoneForward *current = NULL;
       size_t index;
+      // printf("%s\n",number);
       // przechodzimy przez całe słowo
       for (size_t i = 0; i < length; i++) {
             alphabethOk(number[i], NULL,&index);

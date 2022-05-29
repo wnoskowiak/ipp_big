@@ -27,6 +27,8 @@
  */
 bool alphabethOk(char character, bool *endOfWord, size_t* index);
 
+char numToChar(int number);
+
 /** @brief Weryfikuje czy podane napist reprezentują parę różnych numerów telefonu
  *  i określa ich długość
  * Funkcja weryfikuje czy @p number1 i @p number2 są napisami składającymi się
@@ -42,5 +44,7 @@ bool alphabethOk(char character, bool *endOfWord, size_t* index);
  */
 bool numbersOk(size_t *length1, size_t *length2, char const *number1,
                char const *number2);
+
+int charToNum(char chr);
 
 #endif
