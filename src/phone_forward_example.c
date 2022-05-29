@@ -1,764 +1,602 @@
-#ifndef _GNU_SOURCE
-  #define _GNU_SOURCE
+#ifdef NDEBUG
+#undef NDEBUG
 #endif
 
-// Ten plik wÅ‚Ä…czamy jako pierwszy i dwa razy, aby sprawdziÄ‡, czy zawiera
-// wszystkie potrzebne deklaracje i definicje oraz ochronÄ™ przed wielokrotnym
-// wÅ‚Ä…czeniem.
 #include "phone_forward.h"
-#include "phone_forward.h"
-
-#include <malloc.h>
-#include <stdbool.h>
+#include <assert.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/mman.h>
 
-// GdzieÅ› musi byÄ‡ zdefiniowany magiczny napis sÅ‚uÅ¼Ä…cy do spawdzania, czy
-// program w caÅ‚oÅ›ci wykonaÅ‚ siÄ™ poprawnie.
-extern char quite_long_magic_string[];
-char quite_long_magic_string[] = "MAGIC";
+// String is 5MB
+#define BIG_STRING_SIZE 5242880
 
-// MoÅ¼liwe wyniki testu
-#define PASS 0
-#define FAIL 1
-#define WRONG_TEST 2
-#define PASS_INSTRUMENTED 3
-
-// Liczba elementÃ³w tablicy x
-#define SIZE(x) (sizeof(x) / sizeof(x)[0])
-
-// PoczÄ…tek testu
-#define INIT(p)                 \
-  PhoneForward *p = phfwdNew(); \
-  if (p == NULL)                \
-    return FAIL
-
-// Koniec testu
-#define CLEAN(p)  \
-  phfwdDelete(p); \
-  return PASS;
-
-// WypeÅ‚nienie numeru znakiem
-#define FILL(p, from, to, c)           \
-  do {                                 \
-    for (int _k = from; _k < to; ++_k) \
-      p[_k] = c;                       \
-    p[to] = '\0';                      \
-  } while (0)
-
-// Skopiowanie numeru
-#define COPY(dst, src) \
-  strcpy(dst, src)
-
-// Oczekiwane jednakowe numery
-#define C(x, y)            \
-  do {                     \
-    if (strcmp(x, y) != 0) \
-      return FAIL;         \
-  } while (0)
-
-// Oczekiwany zerowy wynik funkcji
-#define Z(f)       \
-  do {             \
-    if ((f) != 0)  \
-      return FAIL; \
-  } while (0)
-
-// Oczekiwany wynik funkcji false
-#define F(f)          \
-  do {                \
-    if ((f) != false) \
-      return FAIL;    \
-  } while (0)
-
-// Oczekiwany niezerowy wynik funkcji
-#define N(f)       \
-  do {             \
-    if ((f) == 0)  \
-      return FAIL; \
-  } while (0)
-
-// Oczekiwany wynik funkcji true
-#define T(f)         \
-  do {               \
-    if ((f) != true) \
-      return FAIL;   \
-  } while (0)
-
-// Oczekiwany numer n jako i-ty w strukturze PhoneNumbers
-#define R(p, i, n) \
-  C(phnumGet(p, i), n)
-
-// Oczekiwany brak i-tego numeru w strukturze PhoneNumbers
-#define Q(p, i) \
-  Z(phnumGet(p, i))
-
-// Oczekiwana pusta struktura PhoneNumbers
-#define E(f)         \
-  do {               \
-   PhoneNumbers *_p; \
-   N(_p = f);        \
-   Q(_p, 0);         \
-   Q(_p, 1);         \
-   Q(_p, 9999);      \
-   phnumDelete(_p);  \
-  } while (0)
-
-// Oczekiwane przekierowanie z A na B
-#define CHECK(p, A, B)      \
-  do {                      \
-    PhoneNumbers *_p;       \
-    N(_p = phfwdGet(p, A)); \
-    R(_p, 0, B);            \
-    Q(_p, 1);               \
-    phnumDelete(_p);        \
-  } while (0)
-
-/** WÅAÅšCIWE TESTY **/
-
-// Tylko utworzenie i usuniÄ™cie struktury
-static int empty_struct(void) {
-  INIT(pf);
-  CLEAN(pf);
+void printSection(char *title) {
+  printf("\n\033[1m%s\033[0m\n", title);
 }
 
-// Brak przekierowaÅ„
-static int no_forward(void) {
-  char n[2];
-
-  INIT(pf);
-
-  n[1] = '\0';
-  for (n[0] = '9'; n[0] >= '0'; --n[0])
-    phfwdRemove(pf, n);
-  for (n[0] = '0'; n[0] <= '9'; ++n[0])
-    CHECK(pf, n, n);
-
-  CLEAN(pf);
+void printTestSuccess(int testNumber) {
+  printf("Test %i: \033[0;32mPASSED\033[0m\n", testNumber);
 }
 
-// BÅ‚Ä™dne argumenty funkcji
-static int wrong_arguments(void) {
-  INIT(pf);
+int main(int argc, char **argv) {
+	bool testReverse = true;
 
-  F(phfwdAdd(pf, "123", ""));
-  F(phfwdAdd(pf, "123", "a"));
-  F(phfwdAdd(pf, "123", " "));
-  F(phfwdAdd(pf, "123", "9b"));
-  F(phfwdAdd(pf, "123", "@"));
-  F(phfwdAdd(pf, "123", "/"));
-  F(phfwdAdd(pf, "123", ":"));
-  F(phfwdAdd(pf, "123", ";"));
-  F(phfwdAdd(pf, "123", ">"));
-  F(phfwdAdd(pf, "123", "0?"));
-  F(phfwdAdd(pf, "123", "*"));
-  F(phfwdAdd(pf, "123", "#"));
-  F(phfwdAdd(pf, "", "123"));
-  F(phfwdAdd(pf, "c", "123"));
-  F(phfwdAdd(pf, " ", "123"));
-  F(phfwdAdd(pf, "8d", "123"));
-  F(phfwdAdd(pf, "/", "123"));
-  F(phfwdAdd(pf, ":", "123"));
-  F(phfwdAdd(pf, ";", "123"));
-  F(phfwdAdd(pf, "1>", "123"));
-  F(phfwdAdd(pf, "?", "123"));
-  F(phfwdAdd(pf, "@", "123"));
-  F(phfwdAdd(pf, "*", "123"));
-  F(phfwdAdd(pf, "#", "123"));
-  F(phfwdAdd(pf, "0", "0"));
+	if (argc != 1) {
+		if (strcmp(argv[0], "s"))
+			testReverse = false;
+	}
 
-  E(phfwdGet(pf, ""));
-  E(phfwdGet(pf, "e"));
-  E(phfwdGet(pf, " "));
-  E(phfwdGet(pf, "7f"));
-  E(phfwdGet(pf, "%"));
-  E(phfwdGet(pf, "/"));
-  E(phfwdGet(pf, "%"));
-  E(phfwdGet(pf, ":"));
-  E(phfwdGet(pf, ";"));
-  E(phfwdGet(pf, "?"));
-  E(phfwdGet(pf, ">"));
-  E(phfwdGet(pf, "@"));
+  PhoneForward *pf;
+  PhoneNumbers *pnum;
 
-  Z(phfwdGet(NULL, "123"));
-  Z(phfwdGet(NULL, NULL));
-  Z(phfwdGet(NULL, "abc"));
+  // ############# THIS SECTION CONTAINS TESTS FOR PART 1 ######################
+  printSection("############### PART 1 ###############");
+  
+  printSection("Basic tests for add and remove");
+  pf = phfwdNew();
+  
+  // Add one number
+  assert(phfwdAdd(pf, "234", "23") == true);
+  pnum = phfwdGet(pf, "23499");
+  assert(strcmp(phnumGet(pnum, 0), "2399") == 0);
+  phnumDelete(pnum);
+  printTestSuccess(1);
 
+  // Redirect it to another
+  assert(phfwdAdd(pf, "234", "11") == true);
+  pnum = phfwdGet(pf, "23499");
+  assert(strcmp(phnumGet(pnum, 0), "1199") == 0);
+  assert(phnumGet(pnum, 1) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(2);
+  
+  // Add a few overlapping ones (shorter and longer)
+  assert(phfwdAdd(pf, "23", "99") == true);
+  assert(phfwdAdd(pf, "23788", "34") == true);
+  assert(phfwdAdd(pf, "2376", "68") == true);
+  pnum = phfwdGet(pf, "23788123");
+  assert(strcmp(phnumGet(pnum, 0), "34123") == 0);
+  assert(phnumGet(pnum, 1) == NULL);
+  phnumDelete(pnum);
+  pnum = phfwdGet(pf, "2376123");
+  assert(strcmp(phnumGet(pnum, 0), "68123") == 0);
+  assert(phnumGet(pnum, 1) == NULL);
+  phnumDelete(pnum);
+  pnum = phfwdGet(pf, "237777");
+  assert(strcmp(phnumGet(pnum, 0), "997777") == 0);
+  assert(phnumGet(pnum, 1) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(3);
+
+  // Redirect to a longer prefix
+  assert(phfwdAdd(pf, "987", "123456789") == true);
+  pnum = phfwdGet(pf, "9871");
+  assert(strcmp(phnumGet(pnum, 0), "1234567891") == 0);
+  phnumDelete(pnum);
+  pnum = phfwdGet(pf, "987");
+  assert(strcmp(phnumGet(pnum, 0), "123456789") == 0);
+  phnumDelete(pnum);
+  printTestSuccess(4);
+
+  // Ask for non-existent numbers to be redirected
+  pnum = phfwdGet(pf, "98");
+  assert(strcmp(phnumGet(pnum, 0), "98") == 0);
+  phnumDelete(pnum);
+  pnum = phfwdGet(pf, "4827462");
+  assert(strcmp(phnumGet(pnum, 0), "4827462") == 0);
+  phnumDelete(pnum);
+  printTestSuccess(5);
+
+  // Remove single forward
+  phfwdRemove(pf, "23788");
+  pnum = phfwdGet(pf, "23788");
+  assert(strcmp(phnumGet(pnum, 0), "99788") == 0);
+  phnumDelete(pnum);
+  printTestSuccess(6);
+
+  // Remove a prefix that matches multiple forwards
+  phfwdRemove(pf, "23");
+  pnum = phfwdGet(pf, "23123");
+  assert(strcmp(phnumGet(pnum, 0), "23123") == 0);
+  phnumDelete(pnum);
+  pnum = phfwdGet(pf, "2376123");
+  assert(strcmp(phnumGet(pnum, 0), "2376123") == 0);
+  phnumDelete(pnum);
+  printTestSuccess(7);
+
+  // Remove non-existent forward
+  phfwdRemove(pf, "23");
+  pnum = phfwdGet(pf, "23123");
+  assert(strcmp(phnumGet(pnum, 0), "23123") == 0);
+  phnumDelete(pnum);
+  pnum = phfwdGet(pf, "000000");
+  assert(strcmp(phnumGet(pnum, 0), "000000") == 0);
+  phnumDelete(pnum);
+  printTestSuccess(8);
+
+  phfwdDelete(pf);
+
+  printSection("Incorrect input");
+  pf = phfwdNew();
+
+  // (Delete)
+  phfwdDelete(NULL);
+
+  // (Add)
+  assert(phfwdAdd(pf, "123", "") == false);
+  printTestSuccess(100);
+  assert(phfwdAdd(pf, "123", "a") == false);
+  printTestSuccess(101);
+  assert(phfwdAdd(pf, "123", "94gs") == false);
+  printTestSuccess(102);
+  assert(phfwdAdd(pf, "123", "as76") == false);
+  printTestSuccess(103);
+  assert(phfwdAdd(pf, "123", "%") == false);
+  printTestSuccess(104);
+  assert(phfwdAdd(pf, "123", "?!@") == false);
+  printTestSuccess(105);
+  assert(phfwdAdd(pf, "123", "<<>>") == false);
+  printTestSuccess(106);
+  
+  assert(phfwdAdd(pf, "", "123") == false);
+  printTestSuccess(107);
+  assert(phfwdAdd(pf, "a", "123") == false);
+  printTestSuccess(108);
+  assert(phfwdAdd(pf, "94gs", "123") == false);
+  printTestSuccess(109);
+  assert(phfwdAdd(pf, "as76", "123") == false);
+  printTestSuccess(110);
+  assert(phfwdAdd(pf, "%", "123") == false);
+  printTestSuccess(111);
+  assert(phfwdAdd(pf, "?!@", "123") == false);
+  printTestSuccess(112);
+  assert(phfwdAdd(pf, "<<>>", "123") == false);
+  printTestSuccess(113);
+
+  assert(phfwdAdd(pf, "123", "123") == false);
+  printTestSuccess(114);
+  assert(phfwdAdd(NULL, "123", "123") == false);
+  printTestSuccess(115);
+  assert(phfwdAdd(pf, "123", NULL) == false);
+  printTestSuccess(116);
+  assert(phfwdAdd(pf, NULL, "123") == false);
+  printTestSuccess(117);
+
+  // (Remove)
+  phfwdRemove(NULL, "123");
+  printTestSuccess(118);
+  phfwdRemove(pf, NULL);
+  printTestSuccess(119);
   phfwdRemove(pf, "");
-  phfwdRemove(pf, "g");
-  phfwdRemove(pf, " ");
-  phfwdRemove(pf, "6h");
-  phfwdRemove(pf, "/");
-  phfwdRemove(pf, "%");
-  phfwdRemove(pf, ":");
+  printTestSuccess(120);
+  phfwdRemove(pf, "94bs");
+  printTestSuccess(121);
+  phfwdRemove(pf, "abc");
+  printTestSuccess(122);
   phfwdRemove(pf, ";");
-  phfwdRemove(pf, ">");
-  phfwdRemove(pf, "@");
-  phfwdRemove(pf, "*");
-  phfwdRemove(pf, "#");
+  printTestSuccess(123);
+  phfwdRemove(pf, "<>");
+  printTestSuccess(124);
+  phfwdRemove(pf, "?!");
+  printTestSuccess(125);
 
-  CLEAN(pf);
-}
+  // (Get)
+  assert(phfwdGet(NULL, "123") == NULL);
+  printTestSuccess(126);
+  pnum = phfwdGet(pf, NULL);
+  assert(pnum != NULL);
+  assert(phnumGet(pnum, 0) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(127);
+  pnum = phfwdGet(pf, "");
+  assert(pnum != NULL);
+  assert(phnumGet(pnum, 0) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(128);
+  pnum = phfwdGet(pf, "94bs");
+  assert(pnum != NULL);
+  assert(phnumGet(pnum, 0) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(129);
+  pnum = phfwdGet(pf, "abc");
+  assert(pnum != NULL);
+  assert(phnumGet(pnum, 0) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(130);
+  pnum = phfwdGet(pf, ";");
+  assert(pnum != NULL);
+  assert(phnumGet(pnum, 0) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(131);
+  pnum = phfwdGet(pf, "<>");
+  assert(pnum != NULL);
+  assert(phnumGet(pnum, 0) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(132);
+  pnum = phfwdGet(pf, "?!");
+  assert(pnum != NULL);
+  assert(phnumGet(pnum, 0) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(133);
 
-// BÅ‚Ä™dne argumenty funkcji bez koÅ„czÄ…cego zera
-static int malicious_arguments(void) {
-  INIT(pf);
+  phfwdDelete(pf);
 
-  long page_size = sysconf(_SC_PAGE_SIZE);
-  char *mem = mmap(NULL, 2 * page_size, PROT_READ | PROT_WRITE,
-                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (mem == (char *)-1)
-    return FAIL;
-  if (munmap(mem + page_size, page_size) < 0)
-    return FAIL;
-  memset(mem, 'A', page_size);
+  // This tests if any global variables are used
+  printSection("Testing two structs");
+  PhoneForward *pf1 = phfwdNew();
+  PhoneForward *pf2 = phfwdNew();
 
-  F(phfwdAdd(pf, mem, mem));
-  E(phfwdGet(pf, mem));
-  phfwdRemove(pf, mem);
+  assert(phfwdAdd(pf1, "123", "789") == true);
+  assert(phfwdAdd(pf2, "456", "321") == true);
+  PhoneNumbers *pnum1 = phfwdGet(pf1, "123456");
+  PhoneNumbers *pnum2 = phfwdGet(pf2, "456890");
+  assert(strcmp(phnumGet(pnum1, 0), "789456") == 0);
+  assert(strcmp(phnumGet(pnum2, 0), "321890") == 0);
+  phnumDelete(pnum1);
+  phnumDelete(pnum2);
+  printTestSuccess(200);
+  phfwdRemove(pf2, "456");
+  pnum1 = phfwdGet(pf1, "123456");
+  pnum2 = phfwdGet(pf2, "456890");
+  assert(strcmp(phnumGet(pnum1, 0), "789456") == 0);
+  assert(strcmp(phnumGet(pnum2, 0), "456890") == 0);
+  phnumDelete(pnum1);
+  phnumDelete(pnum2);
+  printTestSuccess(201);
 
-  if (munmap(mem, page_size) < 0)
-    return FAIL;
-
-  CLEAN(pf);
-}
-
-// Niepsucie bazy przez bÅ‚Ä™dne wywoÅ‚ania funkcji
-static int breaking_struct(void) {
-  char a[2], b[2];
-
-  INIT(pf);
-
-  a[1] = b[1] = '\0';
-  for (a[0] = '0', b[0] = '9'; a[0] <= '9'; ++a[0], --b[0])
-    T(phfwdAdd(pf, a, b));
-
-  F(phfwdAdd(pf, "1", "A"));
-  F(phfwdAdd(pf, "2D", "0"));
-  F(phfwdAdd(pf, "B", "2"));
-  phfwdRemove(pf, "C");
-
-  CLEAN(pf);
-}
-
-// DÅ‚ugie numery
-static int long_numbers(void) {
-  #define LEN1 1000
-  #define LEN2 4500
-  #define LEN3 1500
-  #define LEN4 5000
-
-  char n1[LEN1 + 1], n2[LEN2 + 1], n3[LEN3 + 1], n4[LEN4 + 1];
-
-  FILL(n1, 0, LEN1, '1');
-  FILL(n2, 0, LEN1, '1');
-  FILL(n2, LEN1, LEN2, '2');
-  FILL(n3, 0, LEN3, '3');
-  FILL(n4, 0, LEN3, '3');
-  FILL(n4, LEN3, LEN4, '2');
-
-  INIT(pf);
-
-  T(phfwdAdd(pf, n1, n3));
-  CHECK(pf, n2, n4);
-
-  CLEAN(pf);
-
-  #undef LEN1
-  #undef LEN2
-  #undef LEN3
-  #undef LEN4
-}
-
-// Kopiowanie wartoÅ›ci do wnÄ™trza struktury
-static int copy_arguments(void) {
-  #define LEN5 5
-
-  static const char p1[] = "123";
-  static const char p2[] = "456";
-  char p3[LEN5 + 1], p4[LEN5 + 1];
-
-  INIT(pf);
-
-  COPY(p3, p1);
-  COPY(p4, p2);
-
-  T(phfwdAdd(pf, p3, p4));
-
-  FILL(p3, 0, LEN5, '\0');
-  FILL(p4, 0, LEN5, '\0');
-
-  CHECK(pf, "12345", "45645");
-
-  CLEAN(pf);
-
-  #undef LEN5
-}
-
-// Dwie instancje struktury
-static int two_structs(void) {
-  INIT(pf1);
-  INIT(pf2);
-
-  T(phfwdAdd(pf1, "1", "5"));
-  T(phfwdAdd(pf2, "2", "6"));
-
-  CHECK(pf1, "1", "5");
-  CHECK(pf1, "2", "2");
-  CHECK(pf2, "1", "1");
-  CHECK(pf2, "2", "6");
-
+  phfwdDelete(pf2);
+  pnum1 = phfwdGet(pf1, "123456");
+  assert(strcmp(phnumGet(pnum1, 0), "789456") == 0);
+  phnumDelete(pnum1);
   phfwdDelete(pf1);
-  CLEAN(pf2);
-}
-
-// Delete ze wskaÅºnikiem NULL
-static int delete_null(void) {
-  phnumDelete(NULL);
-  CLEAN(NULL);
-}
-
-// Zachowanie wyniku po zmianie struktury
-static int persistent_results(void) {
-  PhoneNumbers *png;
-
-  INIT(pf);
-
-  T(phfwdAdd(pf, "3", "4"));
-
-  N(png = phfwdGet(pf, "33"));
-
-  T(phfwdAdd(pf, "3", "5"));
-  phfwdRemove(pf, "3");
+  printTestSuccess(202);
+  
+  printSection("Other tests");
+  pf = phfwdNew();
+  char *number = calloc(4, sizeof(char));
+  if (number != NULL) {
+    number[0] = '8';
+    number[1] = '8';
+    number[2] = '8';
+    number[3] = '\0';
+    
+    assert(phfwdAdd(pf, "1234", number) == true);
+    pnum = phfwdGet(pf, "123456");
+    assert(strcmp(phnumGet(pnum, 0), "88856") == 0);
+    assert(phnumGet(pnum, 1) == NULL);
+    
+    free(number);
+    assert(strcmp(phnumGet(pnum, 0), "88856") == 0);
+    assert(phnumGet(pnum, 1) == NULL);
+    phnumDelete(pnum);
+    pnum = phfwdGet(pf, "123456");
+    assert(strcmp(phnumGet(pnum, 0), "88856") == 0);
+    assert(phnumGet(pnum, 1) == NULL);
+    phnumDelete(pnum);
+  }
   phfwdDelete(pf);
+  printTestSuccess(300);
 
-  R(png, 0, "43");
-  Q(png, 1);
-  phnumDelete(png);
+  // ############# THIS SECTION CONTAINS TESTS FOR PART 2 ######################
+  printSection("############### PART 2 ###############");
 
-  return PASS;
-}
-
-// Nadpisanie przekierowania
-static int forward_overwrite(void) {
-  INIT(pf);
-
-  CHECK(pf, "000", "000");
-
-  T(phfwdAdd(pf, "0", "5"));
-  CHECK(pf, "000", "500");
-
-  T(phfwdAdd(pf, "0", "7"));
-  CHECK(pf, "000", "700");
-
-  CLEAN(pf);
-}
-
-// UsuniÄ™cie przekierowania
-static int remove_forward(void) {
-  INIT(pf);
-
-  T(phfwdAdd(pf, "0", "5"));
-  CHECK(pf, "000", "500");
-
-  phfwdRemove(pf, "0");
-  CHECK(pf, "000", "000");
-
-  CLEAN(pf);
-}
-
-// RÃ³Å¼ne operacje na strukturze
-static int various_ops(void) {
-  INIT(pf);
-
-  T(phfwdAdd(pf, "123", "9"));
-  CHECK(pf, "1234", "94");
-  T(phfwdAdd(pf, "123456", "777777"));
-  CHECK(pf, "12345", "945");
-  CHECK(pf, "123456", "777777");
-  CHECK(pf, "997", "997");
-  phfwdRemove(pf, "12");
-  CHECK(pf, "123456", "123456");
-  T(phfwdAdd(pf, "567", "0"));
-  T(phfwdAdd(pf, "5678", "08"));
-  T(phfwdAdd(pf, "12", "123"));
-  CHECK(pf, "123", "1233");
-  T(phfwdAdd(pf, "2", "4"));
-  T(phfwdAdd(pf, "23", "4"));
-
+  // Multiple tests that include numers '*' and '#'
+  printSection("Testing '*' and '#' in functions from part 1");
+  pf = phfwdNew();
+  
+  assert(phfwdAdd(pf, "1#*", "##") == true);
+  pnum = phfwdGet(pf, "1#*23");
+  assert(strcmp(phnumGet(pnum, 0), "##23") == 0);
+  assert(phnumGet(pnum, 1) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(400);
+  
+  assert(phfwdAdd(pf, "12*", "**123") == true);
+  pnum = phfwdGet(pf, "12*4");
+  assert(strcmp(phnumGet(pnum, 0), "**1234") == 0);
+  assert(phnumGet(pnum, 1) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(401);
+  
+  assert(phfwdAdd(pf, "**", "**123") == true);
+  pnum = phfwdGet(pf, "**4");
+  assert(strcmp(phnumGet(pnum, 0), "**1234") == 0);
+  assert(phnumGet(pnum, 1) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(402);
+  
+  pnum = phfwdGet(pf, "1");
+  assert(strcmp(phnumGet(pnum, 0), "1") == 0);
+  assert(phnumGet(pnum, 1) == NULL);
+  phnumDelete(pnum);
+  printTestSuccess(403);
+  
   phfwdDelete(pf);
-  N(pf = phfwdNew());
+  
+  // (Reverse)
+  if (testReverse) {
+    printSection("Testing reverse basic");
+    pf = phfwdNew();
 
-  T(phfwdAdd(pf, "123", "76"));
-  CHECK(pf, "1234581", "764581");
-  CHECK(pf, "7581", "7581");
+    assert(phfwdAdd(pf, "11", "15") == true);
+    assert(phfwdAdd(pf, "112", "715") == true);
+    assert(phfwdAdd(pf, "3", "16") == true);
+    assert(phfwdAdd(pf, "9", "1") == true);
+    assert(phfwdAdd(pf, "98", "157") == true);
+    assert(phfwdAdd(pf, "9*", "15") == true);
 
-  CLEAN(pf);
-}
+    // No forwards exist
+    pnum = phfwdReverse(pf, "71#");
+    assert(strcmp(phnumGet(pnum, 0), "71#") == 0);
+    assert(phnumGet(pnum, 1) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(500);
 
-// DuÅ¼o operacji na strukturze
-static int many_ops() {
-  #define xfrom   00000
-  #define xto     99999
-  #define div0    1
-  #define format0 "%05u"
-  #define div1    10
-  #define format1 "%04u"
-  #define div2    100
-  #define format2 "%03u"
-  #define div3    1000
-  #define format3 "%02u"
+    // Only one forward exists
+    pnum = phfwdReverse(pf, "715");
+    assert(strcmp(phnumGet(pnum, 0), "112") == 0);
+    assert(strcmp(phnumGet(pnum, 1), "715") == 0);
+    assert(phnumGet(pnum, 2) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(501);
 
-  char b1[16], b2[16];
+    // Multiple forwards exist
+    pnum = phfwdReverse(pf, "157");
+    assert(strcmp(phnumGet(pnum, 0), "117") == 0);
+    assert(strcmp(phnumGet(pnum, 1), "157") == 0);
+    assert(strcmp(phnumGet(pnum, 2), "957") == 0);
+    assert(strcmp(phnumGet(pnum, 3), "98") == 0);
+    assert(strcmp(phnumGet(pnum, 4), "9*7") == 0);
+    assert(phnumGet(pnum, 5) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(502);
 
-  INIT(pf);
+    phfwdRemove(pf, "9");
+    pnum = phfwdReverse(pf, "168");
+    assert(strcmp(phnumGet(pnum, 0), "168") == 0);
+    assert(strcmp(phnumGet(pnum, 1), "38") == 0);
+    assert(phnumGet(pnum, 3) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(503);
+    
+    phfwdRemove(pf, "11");
 
-  for (unsigned i = xfrom / div0; i <= xto / div0; ++i) {
-    sprintf(b1, format0, i);
-    sprintf(b2, format2, i / div2);
-    T(phfwdAdd(pf, b1, b2));
-  }
+    pnum = phfwdReverse(pf, "715");
+    assert(strcmp(phnumGet(pnum, 0), "715") == 0);
+    assert(phnumGet(pnum, 1) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(504);
 
-  for (unsigned i = xfrom / div0; i <= xto / div0; ++i) {
-    sprintf(b1, format0 "123", i);
-    sprintf(b2, format2 "123", i / div2);
-    CHECK(pf, b1, b2);
-  }
+    pnum = phfwdReverse(pf, "157#*");
+    assert(strcmp(phnumGet(pnum, 0), "157#*") == 0);
+    assert(phnumGet(pnum, 1) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(505);
 
-  for (unsigned i = xfrom / div1; i <= xto / div1; ++i) {
-    sprintf(b1, format1, i);
-    CHECK(pf, b1, b1);
-  }
+    pnum = phfwdReverse(pf, "16");
+    assert(strcmp(phnumGet(pnum, 0), "16") == 0);
+    assert(strcmp(phnumGet(pnum, 1), "3") == 0);
+    assert(phnumGet(pnum, 2) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(506);
 
-  for (unsigned i = xfrom / div2; i <= xto / div2; ++i) {
-    sprintf(b1, format2, i);
-    phfwdRemove(pf, b1);
-  }
-
-  for (unsigned i = xfrom / div0; i <= xto / div0; ++i) {
-    sprintf(b1, format0, i);
-    CHECK(pf, b1, b1);
-  }
-
-  CLEAN(pf);
-
-  #undef xfrom
-  #undef xto
-  #undef div0
-  #undef format0
-  #undef div1
-  #undef format1
-  #undef div2
-  #undef format2
-  #undef div3
-  #undef format3
-}
-
-// Bardzo dÅ‚ugie numery
-static int very_long(void) {
-  #define LONG_LEN 250000
-
-  char *base, b[3];
-
-  INIT(pf);
-  N(base = malloc(sizeof(char) * (LONG_LEN + 3)));
-
-  for (int i = 0; i < LONG_LEN; ++i)
-    base[i] = '0' + i % 10;
-  base[LONG_LEN + 2] = '\0';
-  b[2] = '\0';
-  for (int i = 0; i <= 99; ++i) {
-    b[0] = '0' + i / 10;
-    b[1] = '0' + i % 10;
-    base[LONG_LEN]     = '0' + i % 10;
-    base[LONG_LEN + 1] = '0' + i / 10;
-    T(phfwdAdd(pf, base, b));
-  }
-  for (int i = 0 ; i <= 99; ++i) {
-    b[0] = '0' + i / 10;
-    b[1] = '0' + i % 10;
-    base[LONG_LEN]     = '0' + i % 10;
-    base[LONG_LEN + 1] = '0' + i / 10;
-    CHECK(pf, base, b);
-  }
-
-  free(base);
-  CLEAN(pf);
-
-  #undef LONG_LEN
-}
-
-// DuÅ¼a liczba przekierowaÅ„
-static int many_remove(void) {
-  #define BIG_COUNT 10000
-
-  char *base;
-
-  INIT(pf);
-  N(base = malloc(sizeof(char) * (BIG_COUNT + 1)));
-
-  for (int i = 0; i < BIG_COUNT; ++i)
-    base[i] = '0' + i % 10;
-  for (int i = BIG_COUNT; i > 1; --i) {
-    base[i] = '\0';
-    T(phfwdAdd(pf, base, "0"));
-  }
-  T(phfwdAdd(pf, "123456789", "0"));
-  phfwdRemove(pf, "0");
-
-  free(base);
-  CLEAN(pf);
-
-  #undef BIG_COUNT
-}
-
-// Intensywne dodawanie i usuwanie przekierowaÅ„
-static int add_remove(void) {
-  #define yfrom   0000
-  #define yto     9999
-  #define yformat "%04u"
-  #define REPEAT_COUNT 27
-
-  char b1[8], b2[16];
-
-  INIT(pf);
-
-  for (unsigned i = yfrom; i <= yto; ++i) {
-    sprintf(b1, yformat, i);
-    sprintf(b2, yformat yformat, i, i);
-    T(phfwdAdd(pf, b1, b2));
-  }
-  for (unsigned i = yfrom; i <= yto; ++i) {
-    sprintf(b1, yformat, i);
-    sprintf(b2, yformat yformat, i, i);
-    for (unsigned j = 0; j < REPEAT_COUNT; ++j) {
-      phfwdRemove(pf, b1);
-      T(phfwdAdd(pf, b1, b2));
-    }
-  }
-  for (unsigned i = yfrom; i <= yto; ++i) {
-    sprintf(b1, yformat, i);
-    sprintf(b2, yformat yformat, i, i);
-    CHECK(pf, b1, b2);
-  }
-
-  CLEAN(pf);
-
-  #undef yfrom
-  #undef yto
-  #undef yformat
-  #undef REPEAT_COUNT
-}
-
-/** TESTY ALOKACJI PAMIÄ˜CI
-    Te testy muszÄ… byÄ‡ linkowane z opcjami
-    -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc
-    -Wl,--wrap=reallocarray -Wl,--wrap=free -Wl,--wrap=strdup -Wl,--wrap=strndup
-**/
-
-// Przechwytujemy funkcje alokujÄ…ce i zwalniajÄ…ce pamiÄ™Ä‡.
-void *__real_malloc(size_t size) __attribute__((weak));
-void *__real_calloc(size_t nmemb, size_t size)__attribute__((weak));
-void *__real_realloc(void *ptr, size_t size)__attribute__((weak));
-void *__real_reallocarray(void *ptr, size_t nmemb, size_t size)__attribute__((weak));
-char *__real_strdup(const char *s)__attribute__((weak));
-char *__real_strndup(const char *s, size_t size)__attribute__((weak));
-void __real_free(void *ptr)__attribute__((weak));
-
-// Trzymamy globalnie informacje o alokacjach i zwolnieniach pamiÄ™ci i nie
-// pozwalamy ich optymalizowaÄ‡.
-static volatile unsigned call_counter = 0;  // licznik wywoÅ‚aÅ„ alokacji
-static volatile unsigned fail_counter = 0;  // numer bÅ‚Ä™dnej alokacji
-static volatile unsigned alloc_counter = 0; // liczba wykonanych alokacji
-static volatile unsigned free_counter = 0;  // liczba wykonanych zwolnieÅ„
-static volatile char *function_name = NULL; // nazwa nieudanej funkcji
-static volatile bool wrap_flag = false;     // przechwytujÄ…ce funkcje byÅ‚y woÅ‚ane
-
-// W zadanym momencie alokacja pamiÄ™ci zawodzi.
-static bool should_fail(void) {
-  return ++call_counter == fail_counter;
-}
-
-// Realokacja musi siÄ™ udaÄ‡, jeÅ›li nie zwiÄ™kszamy rozmiaru alokowanej pamiÄ™ci.
-static bool can_fail(void const *old_ptr, size_t new_size) {
-  if (old_ptr == NULL)
-    return true;
-  else
-    return new_size > malloc_usable_size((void *)old_ptr);
-}
-
-// Symulujemy brak pamiÄ™ci.
-#define UNRELIABLE_ALLOC(ptr, size, fun, name) \
-  do { \
-    wrap_flag = true; \
-    if (ptr != NULL && size == 0) { \
-      /* Takie wywoÅ‚anie realloc jest rÃ³wnowaÅ¼ne wywoÅ‚aniu free(ptr). */ \
-      ++free_counter; \
-      return fun; \
-    } \
-    void *p = can_fail(ptr, size) && should_fail() ? NULL : (fun); \
-    if (p) { \
-      alloc_counter += ptr != p; \
-      free_counter += ptr != p && ptr != NULL; \
-    } \
-    else { \
-      function_name = name; \
-    } \
-    return p; \
-  } while (0)
-
-void *__wrap_malloc(size_t size) {
-  UNRELIABLE_ALLOC(NULL, size, __real_malloc(size), "malloc");
-}
-
-void *__wrap_calloc(size_t nmemb, size_t size) {
-  UNRELIABLE_ALLOC(NULL, nmemb * size, __real_calloc(nmemb, size), "calloc");
-}
-
-void *__wrap_realloc(void *ptr, size_t size) {
-  UNRELIABLE_ALLOC(ptr, size, __real_realloc(ptr, size), "realloc");
-}
-
-void *__wrap_reallocarray(void *ptr, size_t nmemb, size_t size) {
-  UNRELIABLE_ALLOC(ptr, nmemb * size, __real_reallocarray(ptr, nmemb, size), "reallocarray");
-}
-
-char *__wrap_strdup(const char *s) {
-  UNRELIABLE_ALLOC(NULL, 0, __real_strdup(s), "strdup");
-}
-
-char *__wrap_strndup(const char *s, size_t size) {
-  UNRELIABLE_ALLOC(NULL, 0, __real_strndup(s, size), "strndup");
-}
-
-// Zwalnianie pamiÄ™ci zawsze siÄ™ udaje. Odnotowujemy jedynie fakt zwolnienia.
-void __wrap_free(void *ptr) {
-  __real_free(ptr);
-  if (ptr)
-    ++free_counter;
-}
-
-// Test reakcji implementacji na niepowodzenie alokacji pamiÄ™ci
-static unsigned alloc_fail_test(void) {
-  unsigned visited = 0;
-  PhoneForward *pf = NULL;
-  PhoneNumbers *pn = NULL;
-
-  if ((pf = phfwdNew()) != NULL) {
-    visited |= 01;
-  }
-  else if ((pf = phfwdNew()) != NULL) {
-    visited |= 02;
-  }
-  else {
-    visited |= 04;
-    return visited;
-  }
-
-  if (phfwdAdd(pf, "579", "4")) {
-    visited |= 010;
-  }
-  else if (phfwdAdd(pf, "579", "4")) {
-    visited |= 020;
-  }
-  else {
-    visited |= 040;
     phfwdDelete(pf);
-    return visited;
-  }
 
-  if ((pn = phfwdGet(pf, "5791")) != NULL) {
-    visited |= 0100;
-  }
-  else if ((pn = phfwdGet(pf, "5791")) != NULL) {
-    visited |= 0200;
-  }
-  else {
-    visited |= 0400;
+    // Repeating numbers in reverse result
+    pf = phfwdNew();
+    assert(phfwdAdd(pf, "1", "5") == true);
+    assert(phfwdAdd(pf, "11", "51") == true);
+    assert(phfwdAdd(pf, "111", "511") == true);
+
+    pnum = phfwdReverse(pf, "111");
+    assert(strcmp(phnumGet(pnum, 0), "111") == 0);
+    assert(phnumGet(pnum, 1) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(507);
+
     phfwdDelete(pf);
-    return visited;
+
+    // Test sorting in reverse
+    pf = phfwdNew();
+    assert(phfwdAdd(pf, "0", "51") == true);
+    assert(phfwdAdd(pf, "1", "51") == true);
+    assert(phfwdAdd(pf, "2", "51") == true);
+    assert(phfwdAdd(pf, "3", "51") == true);
+    assert(phfwdAdd(pf, "4", "51") == true);
+    assert(phfwdAdd(pf, "5", "51") == true);
+    assert(phfwdAdd(pf, "6", "51") == true);
+    assert(phfwdAdd(pf, "7", "51") == true);
+    assert(phfwdAdd(pf, "8", "51") == true);
+    assert(phfwdAdd(pf, "9", "51") == true);
+    assert(phfwdAdd(pf, "*", "51") == true);
+    assert(phfwdAdd(pf, "#", "51") == true);
+
+    pnum = phfwdReverse(pf, "51");
+    assert(strcmp(phnumGet(pnum, 0), "0") == 0);
+    assert(strcmp(phnumGet(pnum, 1), "1") == 0);
+    assert(strcmp(phnumGet(pnum, 2), "2") == 0);
+    assert(strcmp(phnumGet(pnum, 3), "3") == 0);
+    assert(strcmp(phnumGet(pnum, 4), "4") == 0);
+    assert(strcmp(phnumGet(pnum, 5), "5") == 0);
+    assert(strcmp(phnumGet(pnum, 6), "51") == 0);
+    assert(strcmp(phnumGet(pnum, 7), "6") == 0);
+    assert(strcmp(phnumGet(pnum, 8), "7") == 0);
+    assert(strcmp(phnumGet(pnum, 9), "8") == 0);
+    assert(strcmp(phnumGet(pnum, 10), "9") == 0);
+    assert(strcmp(phnumGet(pnum, 11), "*") == 0);
+    assert(strcmp(phnumGet(pnum, 12), "#") == 0);
+    assert(phnumGet(pnum, 13) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(508);
+
+    phfwdRemove(pf, "0");
+    phfwdRemove(pf, "5");
+    phfwdRemove(pf, "#");
+
+    pnum = phfwdReverse(pf, "51");
+    assert(strcmp(phnumGet(pnum, 0), "1") == 0);
+    assert(strcmp(phnumGet(pnum, 1), "2") == 0);
+    assert(strcmp(phnumGet(pnum, 2), "3") == 0);
+    assert(strcmp(phnumGet(pnum, 3), "4") == 0);
+    assert(strcmp(phnumGet(pnum, 4), "51") == 0);
+    assert(strcmp(phnumGet(pnum, 5), "6") == 0);
+    assert(strcmp(phnumGet(pnum, 6), "7") == 0);
+    assert(strcmp(phnumGet(pnum, 7), "8") == 0);
+    assert(strcmp(phnumGet(pnum, 8), "9") == 0);
+    assert(strcmp(phnumGet(pnum, 9), "*") == 0);
+    assert(phnumGet(pnum, 10) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(509);
+
+    phfwdDelete(pf);
+
+    printSection("Testing reverse incorrect input");
+    pf = phfwdNew();
+
+    assert(phfwdReverse(NULL, "123") == NULL);
+    printTestSuccess(600);
+    pnum = phfwdReverse(pf, NULL);
+    assert(pnum != NULL);
+    assert(phnumGet(pnum, 0) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(601);
+    pnum = phfwdReverse(pf, "");
+    assert(pnum != NULL);
+    assert(phnumGet(pnum, 0) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(602);
+    pnum = phfwdReverse(pf, "94bs");
+    assert(pnum != NULL);
+    assert(phnumGet(pnum, 0) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(603);
+    pnum = phfwdReverse(pf, "abc");
+    assert(pnum != NULL);
+    assert(phnumGet(pnum, 0) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(604);
+    pnum = phfwdReverse(pf, ";");
+    assert(pnum != NULL);
+    assert(phnumGet(pnum, 0) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(605);
+    pnum = phfwdReverse(pf, "<>");
+    assert(pnum != NULL);
+    assert(phnumGet(pnum, 0) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(606);
+    pnum = phfwdReverse(pf, "?!");
+    assert(pnum != NULL);
+    assert(phnumGet(pnum, 0) == NULL);
+    phnumDelete(pnum);
+    printTestSuccess(607);
+
+    phfwdDelete(pf);
   }
+  
+  // This should pass. Memory usage was below 1GB in my implementation, so I would
+  // be surprised if anything went past 2-3GB. If it does then there is reason
+  // to believe the implementation isn't very good and probably needs some work.
+  //
+  // The unoptimized version of my code uses around 8GB of memory (the
+  // unoptimized version will most likely fail with valgrind - out of memory).
+  //
+  // These memory tests should be run on students as the unoptimized version
+  // will likely still pass if >=16GB of memory is available.
+  printSection("Testing if dead branches are deleted");
+  
+  printf("> These tests make over 50,000,000 allocations per test, so it might "
+         "be *very* slow, when running with valgrind, but it will pass.\n");
+  printf("> More info on the tests can be found in kwasow.c's main function.\n");
+  printf("> These tests are meant to be run on a machine with 4GB of RAM.\n");
 
-  phnumDelete(pn);
-  phfwdDelete(pf);
-  return visited;
-}
+  char *bigString = calloc(BIG_STRING_SIZE + 1, sizeof(char));
+  if (bigString != NULL) {
+    // A lot of zeros
+    for (size_t i = 0; i < BIG_STRING_SIZE; i++)
+      bigString[i] = '0';
 
-// Sprawdzenie reakcji implementacji na niepowodzenie alokacji pamiÄ™ci
-static int alloc_fail(void) {
-  unsigned fail, pass;
-  for (fail = 0, pass = 0, fail_counter = 1; fail < 3 && pass < 3; ++fail_counter) {
-    call_counter = 0;
-    alloc_counter = 0;
-    free_counter = 0;
-    function_name = NULL;
-    unsigned visited_point = alloc_fail_test();
+    // Test deleting branches from forwards
+    pf = phfwdNew();
+    for (char c = '0'; c <= '9'; c++) {
+      // Change first digit
+      bigString[0] = c;
 
-    if (alloc_counter != free_counter || (visited_point & 04444444444) != 0) {
-      fprintf(stderr,
-              "fail_counter %u, alloc_counter %u, free_counter %u, "
-              "function_name %s, visited_point %o\n",
-              fail_counter, alloc_counter, free_counter,
-              function_name, visited_point);
-      ++fail;
+      // Add and test
+      assert(phfwdAdd(pf, bigString, "1") == true);
+      pnum = phfwdGet(pf, bigString);
+      assert(strcmp(phnumGet(pnum, 0), "1") == 0);
+      assert(phnumGet(pnum, 1) == NULL);
+      phnumDelete(pnum);
+      phfwdRemove(pf, bigString);
+
+      // Print pass
+      printf("Completed pass %c\n", c);
     }
-    if (function_name == NULL)
-      ++pass;
-    else
-      pass = 0;
+
+    phfwdDelete(pf);
+    printTestSuccess(700);
+
+    // Test deleting branches from reverse
+    if (testReverse) {
+      pf = phfwdNew();
+      // Now testing bigString in reverse tree
+      for (char c = '0'; c <= '9'; c++) {
+        // Change first digit
+        bigString[0] = c;
+
+        // Add and test
+        assert(phfwdAdd(pf, "*", bigString) == true);
+        pnum = phfwdReverse(pf, bigString);
+        assert(strcmp(phnumGet(pnum, 0), bigString) == 0);
+        assert(strcmp(phnumGet(pnum, 1), "*") == 0);
+        assert(phnumGet(pnum, 2) == NULL);
+        phnumDelete(pnum);
+        phfwdRemove(pf, "*");
+
+        // Print pass
+        printf("Completed pass %c\n", c);
+      }
+
+      phfwdDelete(pf);
+      printTestSuccess(701);
+    }
+
+    // Test deleting branches from reverse
+    // Now there are two numbers in forwards and they are both redirected to the
+    // same bigString. One is a prefix of the other. The prefix is deleted first.
+    // The test checks if the branches are also deleted when the deletion
+    // happens while deleting a subtree and not only when deleting the `num`
+    // parameter from the phfwdRemove() function.
+    if (testReverse) {
+      pf = phfwdNew();
+      // Now testing bigString in reverse tree
+      for (char c = '0'; c <= '9'; c++) {
+        // Change first digit
+        bigString[0] = c;
+
+        // Add and test
+        assert(phfwdAdd(pf, "*", bigString) == true);
+        assert(phfwdAdd(pf, "**", bigString) == true);
+        pnum = phfwdReverse(pf, bigString);
+        assert(strcmp(phnumGet(pnum, 0), bigString) == 0);
+        assert(strcmp(phnumGet(pnum, 1), "*") == 0);
+        assert(strcmp(phnumGet(pnum, 2), "**") == 0);
+        assert(phnumGet(pnum, 3) == NULL);
+        phnumDelete(pnum);
+        phfwdRemove(pf, "*");
+
+        // Print pass
+        printf("Completed pass %c\n", c);
+      }
+
+      phfwdDelete(pf);
+      printTestSuccess(702);
+    }
+
+    free(bigString);
+  } else {
+    printf("[ERROR]: Allocation failed for bigString test. Skipping...\n");
   }
-  if (wrap_flag && fail == 0)
-    return PASS_INSTRUMENTED;
-  else if (!wrap_flag && fail == 0)
-    return PASS;
-  else
-    return FAIL;
-}
-
-/** URUCHAMIANIE TESTÃ“W **/
-
-typedef struct {
-  char const *name;
-  int (*function)(void);
-} test_list_t;
-
-#define TEST(t) {#t, t}
-
-static const test_list_t test_list[] = {
-  TEST(empty_struct),
-  TEST(no_forward),
-  // TEST(wrong_arguments),
-  TEST(malicious_arguments),
-  TEST(breaking_struct),
-  TEST(long_numbers),
-  TEST(copy_arguments),
-  TEST(two_structs),
-  TEST(delete_null),
-  TEST(persistent_results),
-  TEST(forward_overwrite),
-  TEST(remove_forward),
-  TEST(various_ops),
-  TEST(many_ops),
-  TEST(very_long),
-  TEST(many_remove),
-  TEST(add_remove),
-  TEST(alloc_fail),
-};
-
-static int do_test(int (*function)(void)) {
-  int result = function();
-  puts(quite_long_magic_string);
-  return result;
-}
-
-int main(int argc, char *argv[]) {
-  if (true)
-    for (size_t i = 0; i < SIZE(test_list); ++i)
-        printf("%d\n",do_test(test_list[i].function));
-
-  fprintf(stderr, "UÅ¼ycie:\n%s nazwa_testu\n", argv[0]);
-  return WRONG_TEST;
 }
