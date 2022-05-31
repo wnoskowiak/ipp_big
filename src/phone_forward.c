@@ -52,6 +52,9 @@ int pstrcmp(const void *a, const void *b) {
 }
 
 PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
+      if(!pf){
+            return NULL;
+      }
       PhoneNumbers *result;
       if (!(result = pnum_initalize())) {
             return NULL;
@@ -61,6 +64,9 @@ PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
             return result;
       }
       if (!numbersOk(&length1, &dump, num, NULL)) {
+            return result;
+      }
+      if(length1 == 0){
             return result;
       }
       pnum_add(result, joinNumbers(num, NULL, length1, 0));
@@ -93,6 +99,19 @@ PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
       if (result->len > 1) {
             qsort(result->list, result->len, sizeof(char *), pstrcmp);
       }
+      //remove repeats 
+      size_t removed = 0;
+      for(size_t j = 1; j<result->len-removed; j++){
+            if(strcmp(result->list[j-1],result->list[j])==0){
+                  free(result->list[j]);
+                  result->list[j] = NULL;
+                  for(size_t k = j;k<result->len-removed-1;k++){
+                        result->list[k] = result->list[k+1];
+                  }
+                  removed++;
+            }
+      }
+      result->len -= removed;
       return result;
 }
 
@@ -146,7 +165,6 @@ bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2) {
 }
 
 void phfwdRemove(PhoneForward *pf, char const *num) {
-      printf("deleting forward %s\n", num);
       if (!(pf && num)) {
             return;
       }
@@ -154,23 +172,15 @@ void phfwdRemove(PhoneForward *pf, char const *num) {
       if (!redirect_place) {
             return;
       }
-      if (!redirect_place->redirect) {
-            return;
+      if (redirect_place->redirect) {
+            PhoneForward *redirect_destination =
+                getElement(pf, redirect_place->redirect);
+            redirect_destination->redirects =
+                list_remove(redirect_destination->redirects, redirect_place);
+            free(redirect_place->redirect);
+            redirect_place->redirect = NULL;
       }
-      PhoneForward *redirect_destination =
-          getElement(pf, redirect_place->redirect);
-      redirect_destination->redirects =
-          list_remove(redirect_destination->redirects, redirect_place);
-      free(redirect_place->redirect);
-      redirect_place->redirect = NULL;
-      // printf("in remove the nodes are: \n");
-      // for (int i = 0; i < 12; i++) {
-      //       printf("%p\n", redirect_place->further[i]);
-      // }
-      // printf("finito\n");
       buggie(pf, redirect_place);
-      // cutHighestUseless(redirect_place);
-      // cutHighestUseless(redirect_destination);
 }
 
 void phfwdRemove2(PhoneForward *pf, char const *num) {
@@ -244,7 +254,6 @@ PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num) {
                   return NULL;
             }
             result->len = 1;
-            printf("newNumber: %s\n",newNumber);
             result->list[0] = newNumber;
       }
       return result;

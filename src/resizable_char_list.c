@@ -37,7 +37,6 @@ static resizable_string_t *string_resize(resizable_string_t *string) {
 
 resizable_string_t *string_add(resizable_string_t *string, char item){
     if(string_is_full(string)){
-        printf("sranie\n");
         if(!(string = string_resize(string))){
             return NULL;
         }
