@@ -74,8 +74,8 @@ PhoneForwardList_t *list_remove(PhoneForwardList_t *list, PhoneForward *item) {
       if (index == -1) {
             return list;
       }
-      list->list[index] = list->list[list->last_index];
-      list->last_index--;
+      list->list[index] = list->list[list->last_index-1];
+      list->last_index -= 1;
       if(list->last_index == 0){
           list_destroy(list);
           list = NULL;

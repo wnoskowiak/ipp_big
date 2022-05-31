@@ -1,5 +1,6 @@
 #include "types.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 static bool pnum_is_full(PhoneNumbers *string) {
       return (((size_t)string->max_size == string->len));
@@ -32,7 +33,8 @@ PhoneNumbers *pnum_add(PhoneNumbers * pnum, char *num){
             return NULL;
         }
     }
-    pnum->list[++pnum->len] = num;
+    pnum->list[pnum->len] = num;
+    pnum->len += 1;
     return pnum;
 }
 

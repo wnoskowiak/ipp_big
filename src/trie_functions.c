@@ -15,7 +15,50 @@
 
 #include "resizable_char_list.h"
 #include "alphabet_check.h"
+#include "phone_forward_list.h"
 #include "types.h"
+#include "stack.h"
+
+void deleteBranch(PhoneForward* pf){
+      /*
+       * Jeśli uda się zainicjalizować stos usuwanie przeprowadzane jest dfs-em
+       * w przeciwnym wypadku struktura usuwana jest wolniejszą funkcją która
+       * nie może się nie wykonać
+       */
+      // jeśli pf = NULL nic się nie dzieje
+      if (!pf) {
+            return;
+      }
+      // próbujemy zainicjalizować kolejkę
+      stack_t *stack = stack_initialize(12);
+      // jeśli się nie uda wywoływana jest bezpieczna funkcja usuwania
+      if (!stack) {
+            safeDelete(pf);
+            return;
+      }
+      PhoneForward *temp = NULL;
+      // dodajemy pf do stosu
+      add(stack, pf);
+      while (!is_empty(stack)) {
+            //ściągamy pierwszy element ze stosu
+            temp = pop(stack);
+            // dodajemy na stos wszystkie elementy na które on wskazuje
+            for (size_t i = 0; i < 12; i++) {
+                  if (temp->further[i]) {
+                        if (!add(stack, temp->further[i])) {
+                              // jeśli nie uda się dodać elementu do kolejki
+                              // jest on usuwany
+                              //  bezpiecznym algorytmem
+                              safeDelete(temp->further[i]);
+                        }
+                  }
+            }
+            // usuwamy sciągnięty element
+            deleteLeaf(temp);
+      }
+      // niszczymy stos
+      stack_destroy(stack);
+}
 
 void free_PhoneForwardList(PhoneForwardList_t * list){
       if(!list){
@@ -54,7 +97,7 @@ char *treverseUp(PhoneForward* pf, size_t *length){
             parent = parent->parent;
             *length += 1;
       }
-      return(string_close(result));
+      return string_close(result);
 }
 
 PhoneForward *createNode(void) {
@@ -101,7 +144,9 @@ PhoneForward *getLeftmostLeaf(PhoneForward *pf, PhoneForward **parent,
             }
             // jeśli przechodzimy do jego najbardziej lewego syna i szukamy
             // dalej
+            if(parent){
             *parent = current;
+            }
             current = current->further[*leftmostIndex];
       }
       return current;
@@ -134,6 +179,111 @@ void safeDelete(PhoneForward *pf) {
       }
 }
 
+PhoneForward *getNextToRight(PhoneForward *pf, PhoneForward *last){
+      if(!pf){
+            return NULL;
+      }
+      PhoneForward *result = NULL;
+      for(int i = 12; i>=0; i--){
+            if(pf->further[i] == last){
+                  break;
+            }
+            if(pf->further[i]){
+                  result = pf->further[i];
+            }
+      }
+      return result;
+}
+
+void buggie(PhoneForward *root,PhoneForward *pf){
+      size_t dump;
+      PhoneForward *temp = getLeftmostLeaf(pf,NULL,&dump), *redirect_destination, *parent, *next;
+      bool deleted;
+      if(temp == pf){
+            return;
+      }
+      while (true)
+      {
+            if(temp->redirect){
+                  redirect_destination = getElement(root, temp->redirect);
+                  redirect_destination->redirects = list_remove(redirect_destination->redirects,temp);
+                  free(temp->redirect);
+                  temp->redirect = NULL;
+            }
+            parent = temp->parent;
+            deleted = false;
+            if(isLeaf(temp,NULL,13) && !temp->redirects){
+                  deleteLeaf(temp);
+                  deleted = true;
+            }
+            next = getNextToRight(parent,temp);
+            if(deleted){
+                  parent->further[findInFurther(parent,temp)] = NULL;
+            }
+            if(parent == pf && !next){
+                  break;
+            }
+            if(next){
+                  temp = getLeftmostLeaf(next,NULL,&dump);
+            }
+            else{
+                  temp = parent;
+            }
+      }
+}
+
+void cutHighestUseless(PhoneForward *pf){
+      PhoneForward *current = NULL, *parent = pf;
+      int index;
+      bool empty;
+      while(parent){
+            index = findInFurther(parent,current);
+            if(index<0){
+                  index = 13;
+            }
+            empty = isLeaf(parent,NULL,index);
+            if(empty && !parent->redirect && !parent->redirects){
+                  current = parent;
+                  parent = parent->parent;
+            }
+            else{
+                  break;
+            }
+      }
+      if(!current){
+            return;
+      }
+      if(!parent){
+            if(index>0){
+            deleteBranch(current->further[index]);
+            current->further[index] = NULL;
+            return;
+            }
+            else{
+                  return;
+            }
+      }
+      deleteBranch(parent->further[index]);
+      parent->further[index] = NULL;
+}
+
+PhoneForward *getElement(PhoneForward *pf, char const *number){
+      size_t index;
+      bool endOfWord;
+      PhoneForward *result = pf;
+      for (size_t i = 0; i < ULONG_MAX; i++) {
+            alphabethOk(number[i],&endOfWord,&index);
+            if(endOfWord){
+                  break;
+            }
+            if(!result->further[index]){
+                  return NULL;
+            }
+            result = result->further[index];
+      }
+      return result;
+}
+
 PhoneForward *createBranch(PhoneForward *pf, char const *number, size_t length,
                            PhoneForward **firstCreated, bool *memoryFailure) {
       *memoryFailure = false;
@@ -141,7 +291,6 @@ PhoneForward *createBranch(PhoneForward *pf, char const *number, size_t length,
       PhoneForward *properPlace = pf;
       PhoneForward *current = NULL;
       size_t index;
-      // printf("%s\n",number);
       // przechodzimy przez całe słowo
       for (size_t i = 0; i < length; i++) {
             alphabethOk(number[i], NULL,&index);
@@ -192,7 +341,7 @@ PhoneForward *getDeepestEmpty(PhoneForward *pf, char const *num, bool *alright,
             // jeśli jest to sprawdzamy czy (z wyłączeniem indeksu number) jest
             // on liściem
             empty = isLeaf(properPlace, NULL, number);
-            if (!empty || properPlace->redirect || !deepestEmpty) {
+            if (!empty || properPlace->redirect || !deepestEmpty || properPlace->redirects) {
                   // jeśłi nie jest, nie zawiera przekierwania oraz deepest
                   // empty nie jest puste to ustawiamy go jako deepestEmpty
                   deepestEmpty = properPlace;

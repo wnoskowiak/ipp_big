@@ -129,4 +129,12 @@ phfwdGet_helper_t getDeepestRedirect(size_t *final, bool *reachedEnd,
 
 char *treverseUp(PhoneForward* pf, size_t *length);
 
+PhoneForward *getElement(PhoneForward *pf, char const *number);
+
+void deleteBranch(PhoneForward* pf);
+
+void cutHighestUseless(PhoneForward *pf);
+
+void buggie(PhoneForward *root,PhoneForward *pf);
+
 #endif

@@ -1,25 +1,12 @@
 #include <stdbool.h>
 #include <string.h>
-#include <stdlib.h>  
+#include <stdlib.h> 
+
+#include <stdio.h>
 #include "types.h"
 
-static char *strrev(char *str)
-{
-      char *p1, *p2;
-
-      if (! str || ! *str)
-            return str;
-      for (p1 = str, p2 = str + strlen(str) - 1; p2 > p1; ++p1, --p2)
-      {
-            *p1 ^= *p2;
-            *p2 ^= *p1;
-            *p1 ^= *p2;
-      }
-      return str;
-}
-
 static bool string_is_full(resizable_string_t *string) {
-      return (((size_t)string->last_filled == string->length - 1));
+      return (((size_t)string->last_filled == string->length));
 }
 
 resizable_string_t *string_initalize(){
@@ -27,9 +14,14 @@ resizable_string_t *string_initalize(){
     if(!(result->char_list = (char*)malloc(3*sizeof(char)))){
         return NULL;
     }
-    result->last_filled = -1;
+    result->last_filled = 0;
     result->length = 3;
     return result;
+}
+
+void string_destroy(resizable_string_t *string){
+    free(string->char_list);
+    free(string);
 }
 
 static resizable_string_t *string_resize(resizable_string_t *string) {
@@ -45,17 +37,24 @@ static resizable_string_t *string_resize(resizable_string_t *string) {
 
 resizable_string_t *string_add(resizable_string_t *string, char item){
     if(string_is_full(string)){
+        printf("sranie\n");
         if(!(string = string_resize(string))){
             return NULL;
         }
     }
-    string->char_list[++string->last_filled] = item;
+    string->char_list[string->last_filled] = item;
+    string->last_filled += 1;
     return string;
 }
 
 char *string_close(resizable_string_t *string){
-    string = string_add(string,'\n');
-    return  strrev(string->char_list);
+    char *result = (char*)malloc((string->last_filled+1)*sizeof(char));
+    for(size_t i = 0; i<string->last_filled; i++){
+        result[i] = string->char_list[string->last_filled-i-1];
+    }
+    result[string->last_filled]='\0';
+    string_destroy(string);
+    return result;
 }
 
 resizable_string_t *string_reopen(resizable_string_t *string){

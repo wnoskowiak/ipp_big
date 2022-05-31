@@ -46,7 +46,7 @@ bool alphabethOk(char character, bool *endOfWord, size_t *index) {
       if(index){
             *index = (size_t)temp;
       }
-      if (temp>0){
+      if (temp>=0){
             return true;
       }
       return false;
@@ -58,7 +58,7 @@ char numToChar(int number) {
       }
       char result = '\n';
       if (number < 10) {
-            result = (char)(number - '0');
+            result = (char)(number + '0');
       }
       if (number == 10) {
             result = '#';
@@ -72,6 +72,8 @@ char numToChar(int number) {
 bool numbersOk(size_t *length1, size_t *length2, char const *number1,
                char const *number2) {
       bool works = false, different = false, num1End = false, num2End = false;
+      if(!number1){num1End = true; different = true;}
+      if(!number2){num2End = true; different = true;}
       for (size_t length = 0; length < ULONG_MAX; length++) {
             if (num1End & num2End) {
                   works = true;
