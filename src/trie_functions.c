@@ -209,6 +209,7 @@ void buggie(PhoneForward *root, PhoneForward *pf) {
                   redirect_destination = getElement(root, temp->redirect);
                   redirect_destination->redirects =
                       list_remove(redirect_destination->redirects, temp);
+                  cutHighestUseless(redirect_destination);
                   free(temp->redirect);
                   temp->redirect = NULL;
             }
@@ -234,36 +235,23 @@ void buggie(PhoneForward *root, PhoneForward *pf) {
 }
 
 void cutHighestUseless(PhoneForward *pf) {
-      PhoneForward *current = NULL, *parent = pf;
-      int index;
+      if(!pf){
+            return;
+      }
+      PhoneForward *current = pf, *parent = pf->parent;
       bool empty;
       while (parent) {
-            index = findInFurther(parent, current);
-            if (index < 0) {
-                  index = 13;
-            }
-            empty = isLeaf(parent, NULL, index);
-            if (empty && !parent->redirect && !parent->redirects) {
+            empty = isLeaf(current, NULL, 13);
+            if (empty && !current->redirect && !current->redirects) {
+                  deleteLeaf(current);
+                  parent->further[findInFurther(parent, current)] = NULL;
                   current = parent;
-                  parent = parent->parent;
-            } else {
+                  parent = current->parent;
+            } 
+            else {
                   break;
             }
       }
-      if (!current) {
-            return;
-      }
-      if (!parent) {
-            if (index > 0) {
-                  deleteBranch(current->further[index]);
-                  current->further[index] = NULL;
-                  return;
-            } else {
-                  return;
-            }
-      }
-      deleteBranch(parent->further[index]);
-      parent->further[index] = NULL;
 }
 
 PhoneForward *getElement(PhoneForward *pf, char const *number) {

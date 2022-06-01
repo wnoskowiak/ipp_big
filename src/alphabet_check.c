@@ -54,9 +54,9 @@ bool alphabethOk(char character, bool *endOfWord, size_t *index) {
 
 char numToChar(int number) {
       if (number < 0) {
-            return '\n';
+            return '\0';
       }
-      char result = '\n';
+      char result = '\0';
       if (number < 10) {
             result = (char)(number + '0');
       }

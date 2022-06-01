@@ -7,15 +7,15 @@
  */
 
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "types.h"
 
 bool list_empty(PhoneForwardList_t *list) { return (list->last_index == 0); }
 
 bool list_full(PhoneForwardList_t *list) {
-      return (((size_t)list->last_index == list->len ));
+      return (((size_t)list->last_index == list->len));
 }
 
 PhoneForwardList_t *phoneForwardList_initialize(size_t cap) {
@@ -74,11 +74,11 @@ PhoneForwardList_t *list_remove(PhoneForwardList_t *list, PhoneForward *item) {
       if (index == -1) {
             return list;
       }
-      list->list[index] = list->list[list->last_index-1];
+      list->list[index] = list->list[list->last_index - 1];
       list->last_index -= 1;
-      if(list->last_index == 0){
-          list_destroy(list);
-          list = NULL;
+      if (list_empty(list)) {
+            list_destroy(list);
+            list = NULL;
       }
       return list;
 }
@@ -95,7 +95,10 @@ PhoneForwardList_t *list_add(PhoneForwardList_t *list, PhoneForward *item) {
                   return NULL;
             }
       }
-      list_remove(list,item);
+      //check if in list
+      if((index_in_list(list,item))>-1){
+            return list;
+      }
       // dopisujemy element na początek stosu i przesuwamy wskaźnik
       list->list[list->last_index] = item;
       list->last_index += 1;
