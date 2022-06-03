@@ -127,16 +127,60 @@ phfwdGet_helper_t getDeepestRedirect(size_t *final, bool *reachedEnd,
                                      PhoneForward const *pf,
                                      char const *number);
 
+/**
+ * @brief Funkcja trewersująca do góry drzewo od elementu @p pf 
+ * określająca ścierzkę prowadzącą do @p pf
+ * 
+ * @param[in] pf Węzeł od którego zacznie się trewersacja
+ * @param[out] length długość znalezionej ścieżki 
+ * @return numer reprezentujący ścieżkę do @p pf lub NULL jeśli nie udało 
+ * się zaalokować pamięci.
+ */
 char *treverseUp(PhoneForward* pf, size_t *length);
 
+/**
+ * @brief Funkcja znajdująca element drzewa @p pf do którego ścieżkę określa 
+ * @p number
+ * 
+ * @param[in] pf Drzewo w którym zostanie wyszukany element którego lokalizację 
+ * określa @p number
+ * @param[in] number numer określający szukaną ścieżkę
+ * @return Element do którego prowadzi @p number lub NULL jeśli taki element nie istnieje
+ */
 PhoneForward *getElement(PhoneForward *pf, char const *number);
 
+/**
+ * @brief Funkcja usuwająca @p pf i wszystkie jego podgałęzie 
+ * 
+ * @param pf Gałąź do usunięcia
+ */
 void deleteBranch(PhoneForward* pf);
 
+/**
+ * @brief Funkcja usuwająca wszystkie puste elementy w górę
+ * od elementu @p pf
+ * 
+ * @param pf Element od którego usuwanie się rozpocznie
+ */
 void cutHighestUseless(PhoneForward *pf);
 
+/**
+ * @brief Funkcja usuwająca wszystkie przekierowania poniżej @p pf w drzewie
+ * @p root
+ * i daba o to żeby w drzewie nie zostały martwe gałęzie
+ * 
+ * @param root Drzewo w którym funkcja zostanie wywołana
+ * @param pf Element drzewa z poniżej którego zostanie usunięte każde przekierowanie 
+ */
 void buggie(PhoneForward *root,PhoneForward *pf);
 
+/**
+ * @brief Funkcja usuwająca przekierowanie zawarte w @p pf będące 
+ * elementem w drzewie @p root . 
+ * 
+ * @param root Drzewo w którym zostanie usunięte przekierowanie
+ * @param pf element @p root zawierający usuwane przekierowanie.
+ */
 void removeForward(PhoneForward *root, PhoneForward *pf);
 
 #endif

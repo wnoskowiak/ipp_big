@@ -27,6 +27,11 @@
  */
 bool alphabethOk(char character, bool *endOfWord, size_t* index);
 
+/** @brief Funkcja zwraca znak reprezentujący liczbę określoną przez @p number
+ * Funkcja zwraca char reprezentujący wartosć liczby określonej przez @p number
+ * @param[in] number  – liczba  do zinterpretowania.
+ * @return znk określający liczbę.
+ */
 char numToChar(int number);
 
 /** @brief Weryfikuje czy podane napist reprezentują parę różnych numerów telefonu
@@ -45,6 +50,34 @@ char numToChar(int number);
 bool numbersOk(size_t *length1, size_t *length2, char const *number1,
                char const *number2);
 
+/** @brief Funkcja zwraca wartość reprezentowaną przez znak @p chr
+ * Funkcja zwraca wartość znaku reprezentowanego przez @p chr jako integer.
+ * @param[in] chr  – znak do zinterpretowania.
+ * @return Wrtość jaką określa znak.
+ */
 int charToNum(char chr);
+
+/** @brief Funkcja porównuje dwa numery w kolejnośći określonej w poleceniu zadania
+ * funkcja określa porządek leksykograficzny @p str1 w stosunku do @p str2
+ * @param[in] str1  – wskaźnik na napis reprezentujący pierwszy numer.
+ * @param[in] str2  – wskaźnik na napis reprezentujący drugi numer.
+ * @return Wartość @p -1 jeśli @p str1 <  @p str2 , @p 1 w przypadku przeciwnym.
+ *         Jeśli @p str1 =  @p str2 funkcja zwraca @p 0 .
+ */
+int numCompare (const char* str1, const char* str2);
+
+/** @brief Funkcja łącząca dwa numery telefonu w jeden.
+ * Funkcja konkatynująca @p num1 i @p num2 w sposób bezpieczny. jeśli
+ * nie uda się zaalokować pamięci funkcja zwraca NULL. Funkcja nie weryfikuje
+ * poprawnośći numerów. @p num1length i
+ * @p num2length określają długość konkatynowamych napisów
+ * @param[in] num1 – wskaźnik na napis reprezentujący pierwszy numer.
+ * @param[in] num2 – wskaźnik na napis reprezentujący drugi numer.
+ * @param[in] num1length – długość pierwszego numeru.
+ * @param[in] num2length – długość drugiego numeru.
+ * @return wskaźnik na zkonkatynowany napis
+ */
+char *joinNumbers(const char *num1, const char *num2,
+                                size_t num1length, size_t num2length);
 
 #endif

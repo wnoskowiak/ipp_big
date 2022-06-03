@@ -12,9 +12,44 @@
 #include "alphabet_check.h"
 
 #include <limits.h>
+#include <string.h>
 #include <stdbool.h>
 
-#include <stdio.h>
+char *joinNumbers(const char *num1, const char *num2,
+                                size_t num1length, size_t num2length) {
+      size_t newLength = num1length + num2length + 1;
+      // próbujemy zaalokować odpowiednią ilość pamięci
+      char *newNumber = (char *)malloc((newLength) * sizeof(char));
+      if (!newNumber) {
+            return NULL;
+      }
+      // jeśli się uda to zapisujemy do niej oba napisy
+      strcpy(newNumber, num1);
+      if (num2) {
+            strcat(newNumber, num2);
+      }
+      newNumber[newLength - 1] = '\0';
+      return newNumber;
+}
+
+int numCompare (const char* str1, const char* str2){
+      int ch1, ch2;
+      size_t i=0;
+      while(true){
+            if(str1[i] == '\0'){
+                  return -1;
+            }
+            if(str2[i] == '\0'){
+                  return 1;
+            }
+            ch1 = charToNum(str1[i]);
+            ch2 = charToNum(str2[i]);
+            if(ch1 != ch2){
+                  return (((int)(ch1>ch2))*2)-1;
+            }
+            i++;
+      }
+}
 
 int charToNum(char chr) {
       int result = -1;

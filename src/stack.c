@@ -7,7 +7,6 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include "types.h"
 #include "stack.h"
 #include "trie_functions.h"
@@ -55,7 +54,7 @@ void stack_destroy(stack_t *stack) {
  * @param stack - wskaźnik na stos do powiększenia
  * @return wskaźnik na @p stack jeśli uda sie powiększyć stos. jeśli nie NULL
  */
-static stack_t *stack_resize(stack_t *stack) {
+static inline stack_t *stack_resize(stack_t *stack) {
       //próbujemy zaalokować większą tablicę i przepisać do niej starą
       PhoneForward **narr = (PhoneForward **)realloc(
           stack->array, (stack->cap + 2) * sizeof(PhoneForward *));

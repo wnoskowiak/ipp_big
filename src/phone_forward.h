@@ -88,7 +88,8 @@ void phfwdRemove(PhoneForward *pf, char const *num);
 PhoneNumbers * phfwdGet(PhoneForward const *pf, char const *num);
 
 /** @brief Wyznacza przekierowania na dany numer.
- * Wyznacza następujący ciąg numerów: jeśli istnieje numer @p x, taki że wynik
+ * Wyznacza następujący ciąg numerów: jeśli istnieje numer @p x, taki że ,ignorując 
+ * istnienie innych przekierowań zwierający dłuższy wspólny syfiks z x, wynik
  * wywołania @p phfwdGet z numerem @p x zawiera numer @p num, to numer @p x
  * należy do wyniku wywołania @ref phfwdReverse z numerem @p num. Dodatkowo ciąg
  * wynikowy zawsze zawiera też numer @p num. Wynikowe numery są posortowane

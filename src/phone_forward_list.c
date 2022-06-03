@@ -1,5 +1,5 @@
 /** @file
- * Zbiór funkcji służących do obsługi listy wskaźników na phone forward
+ * Implementacja zbioru funkcji służących do obsługi listy wskaźników na phone forward
  *
  * @author Wojciech Noskowiak <wn417909@students.mimuw.edu.pl>
  * @copyright Uniwersytet Warszawski
@@ -7,7 +7,6 @@
  */
 
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "types.h"
@@ -16,6 +15,16 @@ bool list_empty(PhoneForwardList_t *list) { return (list->last_index == 0); }
 
 bool list_full(PhoneForwardList_t *list) {
       return (((size_t)list->last_index == list->len));
+}
+
+void free_PhoneForwardList(PhoneForwardList_t *list) {
+      if (!list) {
+            return;
+      }
+      if (list->list) {
+            free(list->list);
+      }
+      free(list);
 }
 
 PhoneForwardList_t *phoneForwardList_initialize(size_t cap) {
@@ -43,7 +52,13 @@ void list_destroy(PhoneForwardList_t *list) {
       free(list);
 }
 
-static PhoneForwardList_t *list_resize(PhoneForwardList_t *list) {
+/**
+ * @brief Funkcaja pomocnicza powiększająca listę @p list 
+ * 
+ * @param list Lista do powiększenia 
+ * @return Powiększona lista @p list lub NULL jeśli nie udało się zaalokowiać pamięci
+ */
+static inline PhoneForwardList_t *list_resize(PhoneForwardList_t *list) {
       // próbujemy zaalokować większą tablicę i przepisać do niej starą
       PhoneForward **narr = (PhoneForward **)realloc(
           list->list, (list->len + 2) * sizeof(PhoneForward *));
@@ -58,7 +73,15 @@ static PhoneForwardList_t *list_resize(PhoneForwardList_t *list) {
       return list;
 }
 
-int index_in_list(PhoneForwardList_t *list, PhoneForward *elem) {
+/**
+ * @brief Funkcja określa na którym miejscu w @p list znajduje sie @p elem.
+ * jeśli @p elem nie znajduje się w @p list funkcja zwraca -1.
+ * 
+ * @param list List w której wyszukany zostanie element @p elem
+ * @param elem Element który zostanie wyszukane w @p list
+ * @return indeks @p elem w @p list lub -1 jeśli @p elem nie zawiera się w  @p list
+ */
+static inline int index_in_list(PhoneForwardList_t *list, PhoneForward *elem) {
       for (size_t i = 0; i < list->last_index; i++) {
             if (list->list[i] == elem) {
                   return i;
@@ -85,14 +108,11 @@ PhoneForwardList_t *list_remove(PhoneForwardList_t *list, PhoneForward *item) {
 }
 
 PhoneForwardList_t *list_add(PhoneForwardList_t *list, PhoneForward *item) {
-      // printf("list add breaker\n");
       if (!list) {
-            // printf("elo?\n");
             list = phoneForwardList_initialize(1);
             if(!list){
                   return NULL;
             }
-            // printf("%p\n",list);
       }
       // jeśli stos jest pełny to próbujemy go zwiększyć
       if (list_full(list)) {

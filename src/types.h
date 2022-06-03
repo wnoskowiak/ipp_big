@@ -51,8 +51,8 @@ struct PhoneForward {
  * To jest struktura przechowująca ciąg numerów telefonów.
  */
 struct PhoneNumbers {
-      size_t max_size;
-      size_t len; /**< maksymalny indeks zawarty w @p list */ 
+      size_t max_size;/**< objętość listy numerów telefonu */
+      size_t len; /**< maksymalny indeks zawarty w liście */ 
       char **list; /**< lista wskaźników na napisy reprezentujące numery telefonów */ 
 };
 /**
@@ -69,10 +69,14 @@ typedef struct phfwdGet_helper {
       char *prefix; /**< wskaźnik na napis reprezentujący to przekierowanie */ 
 } phfwdGet_helper_t;
 
+/**
+ * Typ określający strukturę reprezentującą tablicę charów
+ * wraz z jej długością
+ */
 typedef struct resizable_string {
-      size_t length;
-      size_t last_filled;
-      char* char_list;
+      size_t length; /**< objętość napisu */
+      size_t last_filled; /**< ostatni zapisany znak w napisie */
+      char* char_list; /**< lista znaków */
 } resizable_string_t;
 
 #endif

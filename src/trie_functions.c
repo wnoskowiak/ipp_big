@@ -9,7 +9,6 @@
 
 #include <limits.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -60,17 +59,15 @@ void deleteBranch(PhoneForward *pf) {
       stack_destroy(stack);
 }
 
-void free_PhoneForwardList(PhoneForwardList_t *list) {
-      if (!list) {
-            return;
-      }
-      if (list->list) {
-            free(list->list);
-      }
-      free(list);
-}
-
-int findInFurther(PhoneForward *pf, PhoneForward *seek) {
+/**
+ * @brief Funkcja pomocnicza znajdująca element @p seek w tablicy następstw 
+ * elementu @p pf . Jeśli @p seek nie występuje w następstwach @p pf funkcja zwraca -1.
+ * 
+ * @param pf element w którego następstwa zostaną przeszukane.
+ * @param seek element szukany w następstwach.
+ * @return indeks @p seek w następstwach @p pf lub -1 gdy go nie znaleziono.
+ */
+static inline int findInFurther(PhoneForward *pf, PhoneForward *seek) {
       if (!pf || !seek) {
             return -1;
       }
@@ -186,7 +183,16 @@ void safeDelete(PhoneForward *pf) {
       }
 }
 
-PhoneForward *getNextToRight(PhoneForward *pf, PhoneForward *last) {
+/**
+ * @brief Funkcja pomocnicza znajdująca najbliższy w prawo niepusty element tablicy następstw @p pf
+ * od @p last
+ * 
+ * @param pf Element którego tablica następst zostanie przeszukana 
+ * @param last Element od którego zostanie rozpoczęte przeszukiwanie
+ * @return Wskaźnik na najbliższy w prawo niepusty element tablicy następst @p pf lub NULL
+ * jeśli takiego nie ma.
+ */
+static inline PhoneForward *getNextToRight(PhoneForward *pf, PhoneForward *last) {
       if (!pf) {
             return NULL;
       }

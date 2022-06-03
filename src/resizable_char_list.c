@@ -1,11 +1,25 @@
+/** @file
+ * Implementacja zbioru funkcji służących do obsługi powiększalniej 
+ * listy znaków
+ *
+ * @author Wojciech Noskowiak <wn417909@students.mimuw.edu.pl>
+ * @copyright Uniwersytet Warszawski
+ * @date 2022
+ */
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "types.h"
 
-static bool string_is_full(resizable_string_t *string) {
+/**
+ * @brief Funkcja określająca czy lista @p string jest pełna
+ * 
+ * @param string Badana lista 
+ * @return true jeśli @p string jest pełna
+ * @return false jeśli @p string nie jest pełna
+ */
+static inline bool string_is_full(resizable_string_t *string) {
       return (((size_t)string->last_filled == string->length));
 }
 
@@ -20,12 +34,24 @@ resizable_string_t *string_initalize() {
       return result;
 }
 
-void string_destroy(resizable_string_t *string) {
+/**
+ * @brief Funkcja niszcząca listę @p string
+ * 
+ * @param string Lista do zniszczenia 
+ */
+static inline void string_destroy(resizable_string_t *string) {
       free(string->char_list);
       free(string);
 }
 
-static resizable_string_t *string_resize(resizable_string_t *string) {
+/**
+ * @brief Funkcja pomocnicza powiększajaca listę @p string
+ * 
+ * @param string Lista do powiększenia
+ * @return Powiększona lista @p string lub NULL jeśli nie udało się 
+ * zaalokować pamięci
+ */
+static inline resizable_string_t *string_resize(resizable_string_t *string) {
       char *narr = (char *)realloc(string->char_list,
                                    (string->length + 2) * sizeof(char));
       if (narr == NULL) {
@@ -60,9 +86,4 @@ char *string_close(resizable_string_t *string) {
       result[string->last_filled] = '\0';
       string_destroy(string);
       return result;
-}
-
-resizable_string_t *string_reopen(resizable_string_t *string) {
-      string->last_filled -= 1;
-      return string;
 }

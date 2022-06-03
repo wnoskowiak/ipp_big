@@ -8,7 +8,6 @@
  */
 
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,59 +18,8 @@
 #include "stack.h"
 #include "trie_functions.h"
 #include "types.h"
-/** @brief Pomocnicza funkcja łącząca dwa numery telefonu w jeden.
- * Pomocnicza fubkcja konkatynująca @p num1 i @p num2 w sposób bezpieczny. jeśli
- * nie uda się zaalokować pamięci funkcja zwraca NULL. Funkcja nie weryfikuje
- * poprawnośći numerów. @p num1length i
- * @p num2length określają długość konkatynowamych napisów
- * @param[in] num1 – wskaźnik na napis reprezentujący pierwszy numer.
- * @param[in] num2 – wskaźnik na napis reprezentujący drugi numer.
- * @param[in] num1length – długość pierwszego numeru.
- * @param[in] num2length – długość drugiego numeru.
- * @return wskaźnik na zkonkatynowany napis
- */
-static inline char *joinNumbers(const char *num1, const char *num2,
-                                size_t num1length, size_t num2length) {
-      size_t newLength = num1length + num2length + 1;
-      // próbujemy zaalokować odpowiednią ilość pamięci
-      char *newNumber = (char *)malloc((newLength) * sizeof(char));
-      if (!newNumber) {
-            return NULL;
-      }
-      // jeśli się uda to zapisujemy do niej oba napisy
-      strcpy(newNumber, num1);
-      if (num2) {
-            strcat(newNumber, num2);
-      }
-      newNumber[newLength - 1] = '\0';
-      return newNumber;
-}
-
-int numCompare (const char* str1, const char* str2){
-      int ch1, ch2;
-      size_t i=0;
-      while(true){
-            if(str1[i] == '\0'){
-                  return -1;
-            }
-            if(str2[i] == '\0'){
-                  return 1;
-            }
-            ch1 = charToNum(str1[i]);
-            ch2 = charToNum(str2[i]);
-            if(ch1 != ch2){
-                  return (((int)(ch1>ch2))*2)-1;
-            }
-            i++;
-      }
-}
-
-int pstrcmp(const void *a, const void *b) {
-      return numCompare(*(char **)a, *(char **)b);
-}
 
 PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
-      // printf("reverse\n");
       if (!pf) {
             return NULL;
       }
@@ -93,76 +41,41 @@ PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
             return NULL;
       }
       PhoneForward const *temp = pf;
-      size_t len;
-      char *prefix;
       for (size_t i = 0; i < length1; i++) {
             if (num[i] == '\n') {
                   break;
             }
-            temp = temp->further[charToNum(num[i])];
-            if (!temp) {
+            if (!(temp = temp->further[charToNum(num[i])])) {
                   break;
             }
             if (temp->redirects) {
-                  for (size_t j = 0; j < temp->redirects->last_index; j++) {
-                        if (!(prefix =
-                                  treverseUp(temp->redirects->list[j], &len))) {
-                              pnum_destroy(result);
-                              return NULL;
-                        }
-                        if (!(result = pnum_add(
-                                  result, joinNumbers(prefix, &num[i + 1],
-                                                      strlen(prefix),
-                                                      (length1 - i - 1))))) {
-                              free(prefix);
-                              return NULL;
-                        }
-                        free(prefix);
+                  if (!(result =
+                            addRedirects(temp->redirects, result, &num[i + 1],
+                                         (length1 - i - 1)))) {
+                        return NULL;
                   }
             }
       }
-      if (result->len > 1) {
-            qsort(result->list, result->len, sizeof(char *), pstrcmp);
-      }
-      // remove repeats
-      size_t removed = 0;
-      for (size_t j = 1; j < result->len - removed; j++) {
-            if (strcmp(result->list[j - 1], result->list[j]) == 0) {
-                  free(result->list[j]);
-                  result->list[j] = NULL;
-                  for (size_t k = j; k < result->len - removed - 1; k++) {
-                        result->list[k] = result->list[k + 1];
-                  }
-                  removed++;
-                  j--;
-            }
-      }
-      result->len -= removed;
+      removeRepeats(result);
       return result;
 }
 
 PhoneForward *phfwdNew() { return createNode(); }
 
-void phfwdDelete(PhoneForward *pf) {
-      deleteBranch(pf);
-}
+void phfwdDelete(PhoneForward *pf) { deleteBranch(pf); }
 
 bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2) {
-      // printf("add\n");
-      // printf("add start\n");
       // jeśli którykowiek z inputów = NULL zwracamy false
       if (!(num1 && num2 && pf)) {
-            // printf("add end 1\n");
             return false;
       }
       size_t length1 = 0, length2 = 0;
       // weryfikujemy czy podane napisy reprezentują numery telefonów
       if (!(numbersOk(&length1, &length2, num1, num2) && length1 > 0 &&
             length2 > 0)) {
-                  // printf("add end 2\n");
             return false;
       }
-      
+
       bool memoryFailure;
       PhoneForward *firstCreated1, *firstCreated2;
       // próbujemy stworzyć węzeł w odpowiednim miejscu
@@ -172,7 +85,6 @@ bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2) {
             // jeśli program dotarł do tej linijki to znaczy że
             // wysytąpił problem z alokacją pamięci
             phfwdDelete(firstCreated1);
-            // printf("add end 3\n");
             return false;
       }
       // jeśli udało się je stworzyć dopisujemy do niego
@@ -181,7 +93,6 @@ bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2) {
       properPlace->redirect = (char *)malloc((length2 + 1) * sizeof(char));
       if (!properPlace->redirect) {
             phfwdDelete(firstCreated1);
-            // printf("add end 4\n");
             return false;
       }
       strcpy(properPlace->redirect, num2);
@@ -195,26 +106,20 @@ bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2) {
             properPlace->redirect = NULL;
             phfwdDelete(firstCreated2);
             phfwdDelete(firstCreated1);
-            // printf("add end 5\n");
             return false;
       }
-      // printf("breaker\n");
       if (!(redirectPlace->redirects =
                 list_add(redirectPlace->redirects, properPlace))) {
-                  //     printf("breaker\n");
             free(properPlace->redirect);
             properPlace->redirect = NULL;
             phfwdDelete(firstCreated1);
             phfwdDelete(firstCreated2);
-            // printf("add end 6\n");
             return false;
       }
-      // printf("add end 7\n");
       return true;
 }
 
 void phfwdRemove(PhoneForward *pf, char const *num) {
-      // printf("remove\n");
       if (!(pf && num)) {
             return;
       }
@@ -228,7 +133,6 @@ void phfwdRemove(PhoneForward *pf, char const *num) {
 }
 
 PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num) {
-      // printf("get\n");
       // jeśli pf == NULL zwracamy NULL
       if (!pf) {
             return NULL;
