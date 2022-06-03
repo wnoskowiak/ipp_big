@@ -14,4 +14,6 @@ PhoneNumbers *pnum_initalize();
 
 PhoneNumbers *pnum_add(PhoneNumbers * pnum, char *num);
 
+void pnum_destroy(PhoneNumbers *pnum);
+
 #endif

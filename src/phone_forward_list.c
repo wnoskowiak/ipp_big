@@ -43,18 +43,19 @@ void list_destroy(PhoneForwardList_t *list) {
       free(list);
 }
 
-static PhoneForwardList_t *list_resize(PhoneForwardList_t *stack) {
+static PhoneForwardList_t *list_resize(PhoneForwardList_t *list) {
       // próbujemy zaalokować większą tablicę i przepisać do niej starą
       PhoneForward **narr = (PhoneForward **)realloc(
-          stack->list, (stack->len + 2) * sizeof(PhoneForward *));
+          list->list, (list->len + 2) * sizeof(PhoneForward *));
       if (narr == NULL) {
             // jeśli się nie uda zwracamy NULL
+            list_destroy(list);
             return NULL;
       }
       // jeśli się uda zwiększamy nominalny rozmiar lis
-      stack->len += 2;
-      stack->list = narr;
-      return stack;
+      list->len += 2;
+      list->list = narr;
+      return list;
 }
 
 int index_in_list(PhoneForwardList_t *list, PhoneForward *elem) {
@@ -84,8 +85,14 @@ PhoneForwardList_t *list_remove(PhoneForwardList_t *list, PhoneForward *item) {
 }
 
 PhoneForwardList_t *list_add(PhoneForwardList_t *list, PhoneForward *item) {
+      // printf("list add breaker\n");
       if (!list) {
+            // printf("elo?\n");
             list = phoneForwardList_initialize(1);
+            if(!list){
+                  return NULL;
+            }
+            // printf("%p\n",list);
       }
       // jeśli stos jest pełny to próbujemy go zwiększyć
       if (list_full(list)) {

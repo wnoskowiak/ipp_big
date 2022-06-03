@@ -137,4 +137,6 @@ void cutHighestUseless(PhoneForward *pf);
 
 void buggie(PhoneForward *root,PhoneForward *pf);
 
+void removeForward(PhoneForward *root, PhoneForward *pf);
+
 #endif

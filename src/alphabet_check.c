@@ -21,10 +21,10 @@ int charToNum(char chr) {
       if (chr - '0' >= 0 && chr - '0' <= 9) {
             result = (int)(chr - '0');
       }
-      if (chr - '#' == 0) {
+      if (chr - '*' == 0) {
             result = 10;
       }
-      if (chr - '*' == 0) {
+      if (chr - '#' == 0) {
             result = 11;
       }
       return result;
@@ -61,10 +61,10 @@ char numToChar(int number) {
             result = (char)(number + '0');
       }
       if (number == 10) {
-            result = '#';
+            result = '*';
       }
       if (number == 11) {
-            result = '*';
+            result = '#';
       }
       return result;
 }

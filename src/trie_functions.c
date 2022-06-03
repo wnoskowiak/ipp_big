@@ -88,12 +88,18 @@ char *treverseUp(PhoneForward *pf, size_t *length) {
             NULL;
       }
       *length = 0;
-      resizable_string_t *result = string_initalize();
+      resizable_string_t *result;
+      if(!(result = string_initalize())){
+            return NULL;
+      }
       PhoneForward *parent = pf->parent;
       PhoneForward *current = pf;
       while (parent) {
-            result =
-                string_add(result, numToChar(findInFurther(parent, current)));
+            if(
+            !(result =
+                string_add(result, numToChar(findInFurther(parent, current))))){
+                      return NULL;
+                }
             current = parent;
             parent = parent->parent;
             *length += 1;
@@ -196,23 +202,27 @@ PhoneForward *getNextToRight(PhoneForward *pf, PhoneForward *last) {
       return result;
 }
 
+void removeForward(PhoneForward *root, PhoneForward *pf) {
+      if (!pf->redirect) {
+            return;
+      }
+      PhoneForward *redirect_destination = getElement(root, pf->redirect);
+      redirect_destination->redirects =
+          list_remove(redirect_destination->redirects, pf);
+      cutHighestUseless(redirect_destination);
+      free(pf->redirect);
+      pf->redirect = NULL;
+}
+
 void buggie(PhoneForward *root, PhoneForward *pf) {
       size_t dump;
-      PhoneForward *temp = getLeftmostLeaf(pf, NULL, &dump),
-                   *redirect_destination, *parent, *next;
+      PhoneForward *temp = getLeftmostLeaf(pf, NULL, &dump), *parent, *next;
       bool deleted;
       if (temp == pf) {
             return;
       }
       while (true) {
-            if (temp->redirect) {
-                  redirect_destination = getElement(root, temp->redirect);
-                  redirect_destination->redirects =
-                      list_remove(redirect_destination->redirects, temp);
-                  cutHighestUseless(redirect_destination);
-                  free(temp->redirect);
-                  temp->redirect = NULL;
-            }
+            removeForward(root, temp);
             parent = temp->parent;
             deleted = false;
             if (isLeaf(temp, NULL, 13) && !temp->redirects) {
@@ -235,7 +245,7 @@ void buggie(PhoneForward *root, PhoneForward *pf) {
 }
 
 void cutHighestUseless(PhoneForward *pf) {
-      if(!pf){
+      if (!pf) {
             return;
       }
       PhoneForward *current = pf, *parent = pf->parent;
@@ -247,8 +257,7 @@ void cutHighestUseless(PhoneForward *pf) {
                   parent->further[findInFurther(parent, current)] = NULL;
                   current = parent;
                   parent = current->parent;
-            } 
-            else {
+            } else {
                   break;
             }
       }

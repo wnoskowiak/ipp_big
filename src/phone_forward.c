@@ -47,12 +47,32 @@ static inline char *joinNumbers(const char *num1, const char *num2,
       return newNumber;
 }
 
+int numCompare (const char* str1, const char* str2){
+      int ch1, ch2;
+      size_t i=0;
+      while(true){
+            if(str1[i] == '\0'){
+                  return -1;
+            }
+            if(str2[i] == '\0'){
+                  return 1;
+            }
+            ch1 = charToNum(str1[i]);
+            ch2 = charToNum(str2[i]);
+            if(ch1 != ch2){
+                  return (((int)(ch1>ch2))*2)-1;
+            }
+            i++;
+      }
+}
+
 int pstrcmp(const void *a, const void *b) {
-      return strcmp(*(char **)a, *(char **)b);
+      return numCompare(*(char **)a, *(char **)b);
 }
 
 PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
-      if(!pf){
+      // printf("reverse\n");
+      if (!pf) {
             return NULL;
       }
       PhoneNumbers *result;
@@ -66,12 +86,15 @@ PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
       if (!numbersOk(&length1, &dump, num, NULL)) {
             return result;
       }
-      if(length1 == 0){
+      if (length1 == 0) {
             return result;
       }
-      pnum_add(result, joinNumbers(num, NULL, length1, 0));
+      if (!pnum_add(result, joinNumbers(num, NULL, length1, 0))) {
+            return NULL;
+      }
       PhoneForward const *temp = pf;
       size_t len;
+      char *prefix;
       for (size_t i = 0; i < length1; i++) {
             if (num[i] == '\n') {
                   break;
@@ -82,12 +105,18 @@ PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
             }
             if (temp->redirects) {
                   for (size_t j = 0; j < temp->redirects->last_index; j++) {
-                        char *prefix =
-                            treverseUp(temp->redirects->list[j], &len);
-                        result =
-                            pnum_add(result, joinNumbers(prefix, &num[i + 1],
-                                                         strlen(prefix),
-                                                         (length1 - i - 1)));
+                        if (!(prefix =
+                                  treverseUp(temp->redirects->list[j], &len))) {
+                              pnum_destroy(result);
+                              return NULL;
+                        }
+                        if (!(result = pnum_add(
+                                  result, joinNumbers(prefix, &num[i + 1],
+                                                      strlen(prefix),
+                                                      (length1 - i - 1))))) {
+                              free(prefix);
+                              return NULL;
+                        }
                         free(prefix);
                   }
             }
@@ -95,14 +124,14 @@ PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
       if (result->len > 1) {
             qsort(result->list, result->len, sizeof(char *), pstrcmp);
       }
-      //remove repeats 
+      // remove repeats
       size_t removed = 0;
-      for(size_t j = 1; j<result->len-removed; j++){
-            if(strcmp(result->list[j-1],result->list[j])==0){
+      for (size_t j = 1; j < result->len - removed; j++) {
+            if (strcmp(result->list[j - 1], result->list[j]) == 0) {
                   free(result->list[j]);
                   result->list[j] = NULL;
-                  for(size_t k = j;k<result->len-removed-1;k++){
-                        result->list[k] = result->list[k+1];
+                  for (size_t k = j; k < result->len - removed - 1; k++) {
+                        result->list[k] = result->list[k + 1];
                   }
                   removed++;
                   j--;
@@ -114,63 +143,78 @@ PhoneNumbers *phfwdReverse(PhoneForward const *pf, char const *num) {
 
 PhoneForward *phfwdNew() { return createNode(); }
 
-void phfwdDelete(PhoneForward *pf) { deleteBranch(pf); }
+void phfwdDelete(PhoneForward *pf) {
+      deleteBranch(pf);
+}
 
 bool phfwdAdd(PhoneForward *pf, char const *num1, char const *num2) {
-
+      // printf("add\n");
+      // printf("add start\n");
       // jeśli którykowiek z inputów = NULL zwracamy false
       if (!(num1 && num2 && pf)) {
+            // printf("add end 1\n");
             return false;
       }
-      //       if(strcmp(num2,"103")==0){
-      //       printf("added redirect from %s\n",num1);
-      // }
       size_t length1 = 0, length2 = 0;
       // weryfikujemy czy podane napisy reprezentują numery telefonów
       if (!(numbersOk(&length1, &length2, num1, num2) && length1 > 0 &&
             length2 > 0)) {
+                  // printf("add end 2\n");
             return false;
       }
+      
       bool memoryFailure;
-      PhoneForward *firstCreated;
+      PhoneForward *firstCreated1, *firstCreated2;
       // próbujemy stworzyć węzeł w odpowiednim miejscu
       PhoneForward *properPlace =
-          createBranch(pf, num1, length1, &firstCreated, &memoryFailure);
+          createBranch(pf, num1, length1, &firstCreated1, &memoryFailure);
       if (memoryFailure) {
             // jeśli program dotarł do tej linijki to znaczy że
             // wysytąpił problem z alokacją pamięci
-            phfwdDelete(firstCreated);
+            phfwdDelete(firstCreated1);
+            // printf("add end 3\n");
             return false;
       }
       // jeśli udało się je stworzyć dopisujemy do niego
       // przekierowanie
-      if (properPlace->redirect) {
-            PhoneForward *redirect_destination = getElement(pf, properPlace->redirect);
-                  redirect_destination->redirects =
-                      list_remove(redirect_destination->redirects, properPlace);
-                  cutHighestUseless(redirect_destination);
-            free(properPlace->redirect);
-      }
+      removeForward(pf, properPlace);
       properPlace->redirect = (char *)malloc((length2 + 1) * sizeof(char));
-      if (properPlace->redirect) {
-            strcpy(properPlace->redirect, num2);
-            properPlace->redirect[length2] = '\0';
+      if (!properPlace->redirect) {
+            phfwdDelete(firstCreated1);
+            // printf("add end 4\n");
+            return false;
       }
+      strcpy(properPlace->redirect, num2);
+      properPlace->redirect[length2] = '\0';
       PhoneForward *redirectPlace =
-          createBranch(pf, num2, length2, &firstCreated, &memoryFailure);
+          createBranch(pf, num2, length2, &firstCreated2, &memoryFailure);
       if (memoryFailure) {
             // jeśli program dotarł do tej linijki to znaczy że
             // wysytąpił problem z alokacją pamięci
-            phfwdDelete(firstCreated);
+            free(properPlace->redirect);
+            properPlace->redirect = NULL;
+            phfwdDelete(firstCreated2);
+            phfwdDelete(firstCreated1);
+            // printf("add end 5\n");
             return false;
       }
-      redirectPlace->redirects =
-          list_add(redirectPlace->redirects, properPlace);
+      // printf("breaker\n");
+      if (!(redirectPlace->redirects =
+                list_add(redirectPlace->redirects, properPlace))) {
+                  //     printf("breaker\n");
+            free(properPlace->redirect);
+            properPlace->redirect = NULL;
+            phfwdDelete(firstCreated1);
+            phfwdDelete(firstCreated2);
+            // printf("add end 6\n");
+            return false;
+      }
+      // printf("add end 7\n");
       return true;
 }
 
 void phfwdRemove(PhoneForward *pf, char const *num) {
-      // printf("dupa\n");
+      // printf("remove\n");
       if (!(pf && num)) {
             return;
       }
@@ -178,39 +222,13 @@ void phfwdRemove(PhoneForward *pf, char const *num) {
       if (!redirect_place) {
             return;
       }
-      if (redirect_place->redirect) {
-            PhoneForward *redirect_destination =
-                getElement(pf, redirect_place->redirect);
-            redirect_destination->redirects =
-                list_remove(redirect_destination->redirects, redirect_place);
-            cutHighestUseless(redirect_destination);
-            free(redirect_place->redirect);
-            redirect_place->redirect = NULL;
-      }
+      removeForward(pf, redirect_place);
       buggie(pf, redirect_place);
       cutHighestUseless(redirect_place);
 }
 
-void phfwdRemove2(PhoneForward *pf, char const *num) {
-      // jeśli którykowiek z inputów = NULL nic się nie dzieje
-      if (!(pf && num)) {
-            return;
-      }
-      bool alright;
-      size_t deepestIndex;
-      // próbujemy znaleźć najpłytszy węzeł znajdujący się na ścieżce określonej
-      // przez num
-      PhoneForward *deepestEmpty =
-          getDeepestEmpty(pf, num, &alright, &deepestIndex);
-      if (alright && deepestEmpty) {
-            // jeśli taki znajdziemy to usuwa poddrzewo którego jest ono
-            // korzeniem
-            phfwdDelete(deepestEmpty->further[deepestIndex]);
-            deepestEmpty->further[deepestIndex] = NULL;
-      }
-}
-
 PhoneNumbers *phfwdGet(PhoneForward const *pf, char const *num) {
+      // printf("get\n");
       // jeśli pf == NULL zwracamy NULL
       if (!pf) {
             return NULL;
@@ -276,18 +294,4 @@ char const *phnumGet(PhoneNumbers const *pnum, size_t idx) {
       return pnum->list[idx];
 }
 
-void phnumDelete(PhoneNumbers *pnum) {
-      // jeśli pnum == NULL nic się nie dzieje
-      if (!pnum) {
-            return;
-      }
-      if (pnum->list) {
-            // usuwamy każdy element tablicy
-            for (size_t i = 0; i < pnum->len; i++) {
-                  free(pnum->list[i]);
-            }
-            free(pnum->list);
-      }
-      // oraz całą strukturę
-      free(pnum);
-}
+void phnumDelete(PhoneNumbers *pnum) { pnum_destroy(pnum); }
